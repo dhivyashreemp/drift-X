@@ -1,0 +1,8 @@
+streamlit
+PyPDF2
+langchain-google-genai
+langchain
+langchain-core
+python-dotenv
+radon
+bandit
