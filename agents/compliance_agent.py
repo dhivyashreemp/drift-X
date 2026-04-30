@@ -1,9 +1,35 @@
 import os
+import re
+import time
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 import json
 from datetime import datetime
 from mcp_server.tools.commit_analyzer import CommitAnalyzer
+
+_MAX_RETRIES = 3
+_RETRY_DELAY = 10  # seconds between retries on 503
+
+
+def _invoke_with_retry(chain, inputs):
+    """Invoke an LLM chain with exponential-backoff retry on transient API errors."""
+    last_error = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            return chain.invoke(inputs)
+        except Exception as e:
+            err_str = str(e)
+            is_transient = any(
+                code in err_str for code in ["503", "UNAVAILABLE", "429", "ResourceExhausted", "overloaded"]
+            )
+            if is_transient and attempt < _MAX_RETRIES - 1:
+                wait = _RETRY_DELAY * (2 ** attempt)
+                time.sleep(wait)
+                last_error = e
+            else:
+                raise
+    raise last_error
+
 
 class ComplianceAgent:
     def __init__(self, model_name="gemini-pro"):
@@ -52,13 +78,20 @@ class ComplianceAgent:
             - **Start at 100 points**.
             - Subtract points for each issue found.
             - **MINIMUM SCORE IS 0**. The final score must be between 0 and 100.
-            - -20: Major feature missing or incomplete.
-            - -15: Violation of critical "Don't" guideline.
-            - -10: Feature modified significantly without justification.
-            - -10: Missing critical "Do" (security/validation).
-            - -5: Minor extra feature (gold plating).
-            - -5: Minor guideline deviation or code smell.
-            
+            - -10: Major feature completely absent with no equivalent implementation.
+            - -7: Violation of a critical "Don't" guideline (e.g., hardcoded secrets).
+            - -5: Feature implemented differently than specified but still functional.
+            - -5: Missing a critical "Do" (e.g., no input validation on a public endpoint).
+            - -2: Minor extra feature (gold plating) that doesn't break anything.
+            - -2: Minor guideline deviation or code smell with low risk.
+
+            **IMPORTANT scoring guidance**:
+            - Give benefit of the doubt when intent is clear even if implementation differs slightly.
+            - Partial implementations that cover the core use case should NOT be treated as fully missing.
+            - Extra features (gold plating) are only a problem if they conflict with requirements; otherwise deduct minimally.
+            - Do NOT stack multiple deductions for the same root cause. Pick the most applicable penalty.
+            - If no requirements document is provided, focus only on code quality and guidelines.
+
             **DEDUPLICATION**: If two or more issues are semantically the same (e.g., a "missing feature" and a "coverage gap" describing the same thing), merge them into a single concise item.
             
             For EACH issue, provide:
@@ -88,29 +121,232 @@ class ComplianceAgent:
         
         chain = prompt | self.llm
         try:
-            response = chain.invoke({
+            response = _invoke_with_retry(chain, {
                 "requirements": requirements_text[:10000],
                 "dos_donts": dos_donts_text[:5000] if dos_donts_text else "No specific guidelines provided.",
                 "code_context": code_context
             })
             content = response.content.replace("```json", "").replace("```", "").strip()
             data = json.loads(content)
-            
-            # Ensure score is within [0, 100]
+
             if "score" in data:
                 try:
                     data["score"] = max(0.0, min(100.0, float(data["score"])))
-                except:
+                except Exception:
                     data["score"] = 0.0
             return data
         except Exception as e:
             return {
-                "error": str(e), 
-                "score": 0, 
+                "error": str(e),
+                "score": 0,
                 "issues": [],
                 "summary": f"Unified analysis failed: {str(e)}"
             }
 
+
+    # ── Module Analysis ──────────────────────────────────────────────────────
+
+    _IGNORE_DIRS = {
+        '.git', 'node_modules', '__pycache__', 'build', 'dist',
+        '.next', '.venv', 'venv', 'env', '.idea', '.vscode',
+        'coverage', '.pytest_cache', 'migrations',
+    }
+    _CODE_EXTS = {
+        '.py', '.js', '.ts', '.java', '.cpp', '.c', '.cs', '.go',
+        '.rb', '.php', '.swift', '.kt', '.rs', '.scala',
+        '.jsx', '.tsx', '.vue', '.html', '.css', '.scss',
+    }
+
+    def _module_keywords(self, module_name):
+        """Split module name into search keywords, dropping generic words."""
+        stop = {"module", "service", "component", "handler", "manager", "controller"}
+        raw = re.split(r'[\s_\-/]+', module_name.strip())
+        return [w.lower() for w in raw if w and w.lower() not in stop]
+
+    def _find_module_files(self, repo_path, module_name):
+        """
+        Return a list of dicts {path, score} for files related to module_name.
+        Score is higher when the keyword appears in the file path.
+        """
+        keywords = self._module_keywords(module_name)
+        if not keywords:
+            return []
+
+        matches = []
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in self._IGNORE_DIRS]
+            for fname in files:
+                full = os.path.join(root, fname)
+                rel = os.path.relpath(full, repo_path).replace("\\", "/")
+                rel_lower = rel.lower()
+
+                score = 0
+                for kw in keywords:
+                    if kw in rel_lower:
+                        score += 3
+
+                # Also scan file content if no path hit and extension matches
+                if score == 0 and os.path.splitext(fname)[1] in self._CODE_EXTS:
+                    try:
+                        if os.path.getsize(full) < 102400:
+                            with open(full, 'r', encoding='utf-8', errors='ignore') as fh:
+                                snippet = fh.read(4000).lower()
+                            for kw in keywords:
+                                if kw in snippet:
+                                    score += 1
+                    except Exception:
+                        pass
+
+                if score > 0:
+                    matches.append({"path": rel, "score": score})
+
+        return sorted(matches, key=lambda x: x["score"], reverse=True)
+
+    def _find_module_usages(self, repo_path, module_name, module_files):
+        """
+        Scan all files NOT in module_files for references to the module.
+        Returns {rel_path: [{line, content}, ...]} for files that reference the module.
+        """
+        keywords = self._module_keywords(module_name)
+        if not keywords:
+            return {}
+
+        module_paths = {mf["path"] for mf in module_files}
+        usages = {}
+
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in self._IGNORE_DIRS]
+            for fname in files:
+                if os.path.splitext(fname)[1] not in self._CODE_EXTS:
+                    continue
+                full = os.path.join(root, fname)
+                rel = os.path.relpath(full, repo_path).replace("\\", "/")
+                if rel in module_paths:
+                    continue
+                try:
+                    if os.path.getsize(full) > 204800:
+                        continue
+                    with open(full, 'r', encoding='utf-8', errors='ignore') as fh:
+                        lines = fh.readlines()
+                    hits = []
+                    for i, line in enumerate(lines, 1):
+                        ll = line.lower()
+                        if any(kw in ll for kw in keywords):
+                            hits.append({"line": i, "content": line.rstrip()})
+                            if len(hits) >= 10:
+                                break
+                    if hits:
+                        usages[rel] = hits
+                except Exception:
+                    pass
+
+        return usages
+
+    def _get_module_code_context(self, repo_path, file_rel_paths):
+        """Read code content from a list of relative file paths."""
+        context = ""
+        for rel in file_rel_paths[:12]:
+            full = os.path.join(repo_path, rel)
+            try:
+                if os.path.getsize(full) > 102400:
+                    continue
+                with open(full, 'r', encoding='utf-8', errors='ignore') as fh:
+                    lines = fh.readlines()
+                snippet = ""
+                chars = 0
+                for i, line in enumerate(lines, 1):
+                    entry = f"{i}: {line}"
+                    if chars + len(entry) > 3000:
+                        break
+                    snippet += entry
+                    chars += len(entry)
+                context += f"\n--- {rel} ---\n{snippet}\n"
+            except Exception:
+                pass
+        return context[:15000]
+
+    def analyze_module_focus(self, repo_path, module_name, requirements_text="", dos_donts_text=""):
+        """
+        Performs a focused compliance analysis on a named module:
+        - Identifies files that belong to the module
+        - Finds where the module is referenced elsewhere
+        - Runs LLM analysis on the module code vs requirements
+        """
+        module_files = self._find_module_files(repo_path, module_name)
+        module_usages = self._find_module_usages(repo_path, module_name, module_files)
+        module_code = self._get_module_code_context(
+            repo_path, [mf["path"] for mf in module_files]
+        )
+
+        prompt = PromptTemplate(
+            template="""
+            You are a Code Analyst performing a focused review of a specific software module.
+
+            Module Name: {module_name}
+
+            Module Files (code from files identified as part of this module):
+            {module_code}
+
+            Requirements / Specification:
+            {requirements}
+
+            Do's and Don'ts Guidelines:
+            {dos_donts}
+
+            Your Tasks:
+            1. Describe the module's purpose and responsibilities.
+            2. List its key components (classes, functions, routes, models, etc.).
+            3. Identify compliance issues specific to this module compared to requirements.
+            4. Flag any guideline violations (Do's not followed / Don'ts present).
+            5. Provide an overall compliance score for this module (0–100).
+
+            Output JSON format ONLY:
+            {{
+                "module_purpose": "...",
+                "key_components": ["...", "..."],
+                "compliance_score": 85,
+                "summary": "...",
+                "issues": [
+                    {{
+                        "type": "...",
+                        "description": "...",
+                        "evidence": "...",
+                        "reasoning": "...",
+                        "remediation": "..."
+                    }}
+                ]
+            }}
+            """,
+            input_variables=["module_name", "module_code", "requirements", "dos_donts"]
+        )
+
+        chain = prompt | self.llm
+        try:
+            response = _invoke_with_retry(chain, {
+                "module_name": module_name,
+                "module_code": module_code if module_code else "No module files found.",
+                "requirements": requirements_text[:8000] if requirements_text else "No requirements provided.",
+                "dos_donts": dos_donts_text[:3000] if dos_donts_text else "No guidelines provided.",
+            })
+            content = response.content.replace("```json", "").replace("```", "").strip()
+            analysis = json.loads(content)
+        except Exception as e:
+            analysis = {
+                "module_purpose": "Analysis failed.",
+                "key_components": [],
+                "compliance_score": 0,
+                "summary": f"Module analysis error: {str(e)}",
+                "issues": []
+            }
+
+        return {
+            "module_name": module_name,
+            "related_files": [mf["path"] for mf in module_files],
+            "usage_in_files": module_usages,
+            "analysis": analysis,
+            "file_count": len(module_files),
+            "usage_count": len(module_usages),
+        }
 
     def _get_code_summary(self, repo_path):
         # Universal file reader
@@ -216,9 +452,14 @@ class ComplianceAgent:
             - **Start at 100 points**.
             - Subtract points for each issue found.
             - **MINIMUM SCORE IS 0**. The final score must be between 0 and 100.
-            - -30: Critical feature deleted and NOT replaced.
-            - -10: Feature replaced with inferior logic.
-            - -5: Feature replaced with better/equivalent logic (refactor).
+            - -15: Critical feature deleted with NO equivalent replacement anywhere in the codebase.
+            - -5: Feature replaced with noticeably inferior logic (regression).
+            - -0: Feature replaced with equivalent or better logic (healthy refactor — no penalty).
+
+            **IMPORTANT scoring guidance**:
+            - A refactor or rename is NOT a feature loss. Only penalise genuine removals.
+            - If the deleted code has a functional equivalent elsewhere, treat it as "Replacement - Feature Preserved" with zero deduction.
+            - Do NOT stack deductions for the same deleted block across multiple findings.
             
             Output JSON format ONLY:
             {{
@@ -247,7 +488,7 @@ class ComplianceAgent:
         
         chain = prompt | self.llm
         try:
-            response = chain.invoke({
+            response = _invoke_with_retry(chain, {
                 "requirements": requirements_text[:10000],
                 "dos_donts": dos_donts_text[:5000] if dos_donts_text else "No specific guidelines provided.",
                 "code_context": code_context[:15000],
@@ -258,15 +499,13 @@ class ComplianceAgent:
             })
             content = response.content.replace("```json", "").replace("```", "").strip()
             result = json.loads(content)
-            
-            # Ensure feature_loss_score is within [0, 100]
+
             if "feature_loss_score" in result:
                 try:
                     result["feature_loss_score"] = max(0.0, min(100.0, float(result["feature_loss_score"])))
-                except:
+                except Exception:
                     result["feature_loss_score"] = 0.0
-            
-            # Add metadata
+
             result["analysis_metadata"] = {
                 "repo_path": repo_path,
                 "total_commits": len(commit_history),
@@ -274,7 +513,7 @@ class ComplianceAgent:
                 "head_commit": head_commit,
                 "analysis_date": str(datetime.now())
             }
-            
+
             return result
         except Exception as e:
             return {

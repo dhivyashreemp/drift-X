@@ -26,19 +26,21 @@ def parse_git_url(url):
         
     return url, None, None
 
-def clone_repo(repo_url):
+def clone_repo(repo_url, branch=None):
     """
     Clones a git repository to a temporary directory.
     Automatically handles GitHub browser URLs by extracting the root, branch, and subpath.
+    An explicit `branch` argument overrides any branch found in the URL.
     Returns the path to the specific directory requested.
     """
-    clean_url, branch, subpath = parse_git_url(repo_url)
+    clean_url, url_branch, subpath = parse_git_url(repo_url)
+    effective_branch = branch or url_branch
     temp_dir = tempfile.mkdtemp()
-    
+
     try:
         command = ["git", "clone"]
-        if branch:
-            command.extend(["--branch", branch, "--single-branch"])
+        if effective_branch:
+            command.extend(["--branch", effective_branch, "--single-branch"])
         command.extend([clean_url, temp_dir])
         
         subprocess.check_call(command)
@@ -48,7 +50,7 @@ def clone_repo(repo_url):
             target_path = os.path.join(temp_dir, subpath)
             if os.path.exists(target_path):
                 return target_path
-            
+
         return temp_dir
     except subprocess.CalledProcessError as e:
         if os.path.exists(temp_dir):
