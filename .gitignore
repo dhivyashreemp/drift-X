@@ -1,0 +1,28 @@
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Data files (regenerated at runtime)
+analysis_history.json
+team_history.json
+users.json
+
+# Cloned repos (temp)
+/tmp_repos/
+
+# OS
+.DS_Store
+Thumbs.db

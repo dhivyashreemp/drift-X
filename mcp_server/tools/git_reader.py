@@ -26,14 +26,28 @@ def parse_git_url(url):
         
     return url, None, None
 
-def clone_repo(repo_url, branch=None):
+def _inject_token(url: str, token: str) -> str:
+    """Insert a PAT into an HTTPS URL: https://TOKEN@github.com/..."""
+    if not token or not url.startswith("https://"):
+        return url
+    # Don't double-inject if credentials are already present
+    after_scheme = url[len("https://"):]
+    if "@" in after_scheme.split("/")[0]:
+        return url
+    return f"https://{token}@{after_scheme}"
+
+
+def clone_repo(repo_url, branch=None, token=None):
     """
     Clones a git repository to a temporary directory.
     Automatically handles GitHub browser URLs by extracting the root, branch, and subpath.
     An explicit `branch` argument overrides any branch found in the URL.
+    Pass `token` (GitHub PAT) to access private repositories.
     Returns the path to the specific directory requested.
     """
     clean_url, url_branch, subpath = parse_git_url(repo_url)
+    if token:
+        clean_url = _inject_token(clean_url, token)
     effective_branch = branch or url_branch
     temp_dir = tempfile.mkdtemp()
 
@@ -42,9 +56,9 @@ def clone_repo(repo_url, branch=None):
         if effective_branch:
             command.extend(["--branch", effective_branch, "--single-branch"])
         command.extend([clean_url, temp_dir])
-        
-        subprocess.check_call(command)
-        
+
+        subprocess.check_call(command, stderr=subprocess.PIPE)
+
         # If a subpath was specified, return the path to that internal folder
         if subpath:
             target_path = os.path.join(temp_dir, subpath)
@@ -55,7 +69,13 @@ def clone_repo(repo_url, branch=None):
     except subprocess.CalledProcessError as e:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, onerror=on_rm_error)
-        raise Exception(f"Failed to clone repository: {e}")
+        exit_code = e.returncode
+        if exit_code == 128:
+            raise Exception(
+                "PRIVATE_REPO: Repository not found or access denied (exit 128). "
+                "If this is a private repository, please provide a GitHub Personal Access Token."
+            )
+        raise Exception(f"Failed to clone repository (exit {exit_code})")
 
 import stat
 

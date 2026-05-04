@@ -76,23 +76,30 @@ class ComplianceAgent:
             
             Scoring Rubric (0 to 100):
             - **Start at 100 points**.
-            - Subtract points for each issue found.
-            - **MINIMUM SCORE IS 0**. The final score must be between 0 and 100.
-            - -10: Major feature completely absent with no equivalent implementation.
-            - -7: Violation of a critical "Don't" guideline (e.g., hardcoded secrets).
-            - -5: Feature implemented differently than specified but still functional.
-            - -5: Missing a critical "Do" (e.g., no input validation on a public endpoint).
-            - -2: Minor extra feature (gold plating) that doesn't break anything.
-            - -2: Minor guideline deviation or code smell with low risk.
+            - Subtract points for each confirmed issue found.
+            - **MINIMUM SCORE IS 0, MAXIMUM TOTAL DEDUCTION IS 55 POINTS** (score cannot go below 45 unless there are 8+ critical issues with clear evidence).
+            - -6: Major feature completely absent with NO equivalent implementation anywhere in the codebase.
+            - -4: Violation of a critical "Don't" guideline (e.g., hardcoded secrets, SQL injection risk).
+            - -3: Feature implemented differently than specified but still functional.
+            - -3: Missing a critical "Do" (e.g., no input validation on a public endpoint).
+            - -1: Minor extra feature (gold plating) that doesn't break anything.
+            - -1: Minor guideline deviation or code smell with low risk.
+
+            **STRICT evidence requirement — BEFORE deducting any points**:
+            - You MUST cite a specific file and line number as evidence. If you cannot point to a specific file/line that proves the issue, DO NOT raise it.
+            - "Feature not found" is NOT sufficient — you must confirm the feature is absent after scanning the full code context.
+            - If a feature exists in a different file or with a slightly different name/approach, do NOT mark it as missing.
 
             **IMPORTANT scoring guidance**:
             - Give benefit of the doubt when intent is clear even if implementation differs slightly.
-            - Partial implementations that cover the core use case should NOT be treated as fully missing.
-            - Extra features (gold plating) are only a problem if they conflict with requirements; otherwise deduct minimally.
+            - Partial implementations that cover the core use case should NOT be treated as fully missing — deduct -3 max, not -6.
+            - Extra features (gold plating) are only a problem if they actively conflict with requirements; otherwise deduct minimally or skip.
             - Do NOT stack multiple deductions for the same root cause. Pick the most applicable penalty.
-            - If no requirements document is provided, focus only on code quality and guidelines.
+            - If requirements are short or high-level, be more lenient — do not invent issues where the requirements are ambiguous.
+            - A score of 70-85 is healthy and expected for a typical working codebase with minor gaps.
+            - If no requirements document is provided, focus only on clear code quality issues and guidelines.
 
-            **DEDUPLICATION**: If two or more issues are semantically the same (e.g., a "missing feature" and a "coverage gap" describing the same thing), merge them into a single concise item.
+            **DEDUPLICATION**: If two or more issues are semantically the same (e.g., a "missing feature" and a "coverage gap" describing the same thing), merge them into a single concise item. Aim for the minimum number of distinct issues.
             
             For EACH issue, provide:
             - **Type**: Drift/Completeness/Guideline Violation
@@ -450,16 +457,18 @@ class ComplianceAgent:
             
             Scoring Rubric (0 to 100):
             - **Start at 100 points**.
-            - Subtract points for each issue found.
-            - **MINIMUM SCORE IS 0**. The final score must be between 0 and 100.
-            - -15: Critical feature deleted with NO equivalent replacement anywhere in the codebase.
-            - -5: Feature replaced with noticeably inferior logic (regression).
+            - Subtract points for each confirmed feature loss.
+            - **MINIMUM SCORE IS 0, MAXIMUM TOTAL DEDUCTION IS 50 POINTS**.
+            - -8: Critical feature deleted with NO equivalent replacement anywhere in the codebase.
+            - -3: Feature replaced with noticeably inferior logic (measurable regression).
             - -0: Feature replaced with equivalent or better logic (healthy refactor — no penalty).
 
             **IMPORTANT scoring guidance**:
-            - A refactor or rename is NOT a feature loss. Only penalise genuine removals.
-            - If the deleted code has a functional equivalent elsewhere, treat it as "Replacement - Feature Preserved" with zero deduction.
+            - A refactor, rename, or restructure is NOT a feature loss. Only penalise genuine removals where the functionality is truly gone.
+            - If the deleted code has a functional equivalent elsewhere in the current codebase, treat it as "Replacement - Feature Preserved" with zero deduction.
             - Do NOT stack deductions for the same deleted block across multiple findings.
+            - When in doubt whether something was intentionally removed vs accidentally lost, lean toward "Replacement" status.
+            - A score of 75-90 is typical for a codebase that has been actively refactored.
             
             Output JSON format ONLY:
             {{

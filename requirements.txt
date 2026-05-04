@@ -7,3 +7,7 @@ python-dotenv
 radon
 bandit
 reportlab
+fastapi
+uvicorn[standard]
+python-multipart
+httpx
