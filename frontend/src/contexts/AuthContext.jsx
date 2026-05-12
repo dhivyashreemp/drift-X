@@ -32,7 +32,8 @@ export function AuthProvider({ children }) {
 
     if (urlToken) localStorage.setItem('driftx_token', urlToken)
 
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${activeToken}` } })
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+    fetch(`${apiBase}/api/auth/me`, { headers: { Authorization: `Bearer ${activeToken}` } })
       .then(r => r.ok ? r.json() : null)
       .then(u => {
         if (u) {
@@ -64,7 +65,8 @@ export function AuthProvider({ children }) {
 
   const authFetch = (url, options = {}) => {
     const t = token || localStorage.getItem('driftx_token')
-    return fetch(url, {
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+    return fetch(`${base}${url}`, {
       ...options,
       headers: { ...options.headers, Authorization: `Bearer ${t}` },
     })
