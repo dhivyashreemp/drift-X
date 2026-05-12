@@ -170,7 +170,9 @@ async def microsoft_callback(code: str = "", error: str = "", error_description:
 
 @app.get("/api/team")
 def team(authorization: str = Header(default="")):
-    _require_user(authorization)
+    user = _require_user(authorization)
+    if user.get("role") != "manager":
+        raise HTTPException(status_code=403, detail="Manager access required.")
     summary = get_team_summary()
     analyzed_emails = {m["email"] for m in summary}
     for u in all_users():

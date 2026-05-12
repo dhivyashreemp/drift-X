@@ -5,6 +5,7 @@ import NavBar from './components/NavBar'
 import Sidebar from './components/Sidebar'
 import ResultTabs from './components/ResultTabs'
 import TeamDashboard from './components/TeamDashboard'
+import MyScoreView from './components/MyScoreView'
 
 const POLL_MS = 3000
 
@@ -234,6 +235,7 @@ function AppShell() {
 
   const handleSetView = (v) => {
     if (isManager && v !== 'team') return
+    if (!isManager && v === 'team') return
     setView(v)
   }
 
@@ -241,9 +243,9 @@ function AppShell() {
     <div className="flex flex-col h-screen bg-navy-950 text-slate-100">
       <NavBar view={view} onSetView={handleSetView} />
       <div className="flex-1 overflow-hidden flex flex-col">
-        {view === 'analysis' && !isManager
-          ? <AnalysisView />
-          : <div className="flex-1 overflow-y-auto"><TeamDashboard /></div>}
+        {isManager && <div className="flex-1 overflow-y-auto"><TeamDashboard /></div>}
+        {!isManager && view === 'analysis' && <AnalysisView />}
+        {!isManager && view === 'my-scores' && <div className="flex-1 overflow-y-auto"><MyScoreView /></div>}
       </div>
     </div>
   )

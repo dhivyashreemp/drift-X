@@ -22,13 +22,20 @@ export default function NavBar({ view, onSetView }) {
         {/* Nav items */}
         <div className="flex h-12">
           {!isManager && (
-            <NavBtn active={view === 'analysis'} onClick={() => onSetView('analysis')}>
-              Analysis
+            <>
+              <NavBtn active={view === 'analysis'} onClick={() => onSetView('analysis')}>
+                Analysis
+              </NavBtn>
+              <NavBtn active={view === 'my-scores'} onClick={() => onSetView('my-scores')}>
+                My Scores
+              </NavBtn>
+            </>
+          )}
+          {isManager && (
+            <NavBtn active={view === 'team'} onClick={() => onSetView('team')}>
+              Team Dashboard
             </NavBtn>
           )}
-          <NavBtn active={view === 'team'} onClick={() => onSetView('team')}>
-            Team Dashboard
-          </NavBtn>
         </div>
       </div>
 
