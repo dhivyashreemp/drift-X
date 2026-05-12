@@ -2,5 +2,11 @@
   "$schema": "https://schema.railpack.com",
   "packages": {
     "node": "22"
+  },
+  "build": {
+    "commands": [
+      "pip install -r requirements.txt",
+      "cd frontend && npm ci && npm run build"
+    ]
   }
 }
