@@ -1,54 +1,37 @@
-import json
-import os
 from datetime import datetime
+from db import repo_history_col
 
-HISTORY_FILE = "analysis_history.json"
 
 def save_analysis(repo_url, analysis_type, score, summary, last_commit_hash=None):
-    """Saves analysis results to the local history file."""
-    history = load_all_history()
-    
+    col = repo_history_col()
     entry = {
+        "repo_url": repo_url,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "type": analysis_type,
         "score": score,
         "summary": summary,
-        "last_commit_hash": last_commit_hash
+        "last_commit_hash": last_commit_hash,
     }
-    
-    if repo_url not in history:
-        history[repo_url] = []
-    
-    # Prepend to keep latest first
-    history[repo_url].insert(0, entry)
-    
-    # Keep only last 10 analyses per repo to save space
-    history[repo_url] = history[repo_url][:10]
-    
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=4)
+    col.insert_one(entry)
 
-def load_all_history():
-    """Loads all history from the local file."""
-    if not os.path.exists(HISTORY_FILE):
-        return {}
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {}
+    # Keep only the 10 most recent analyses per repo
+    ids_to_keep = [
+        doc["_id"]
+        for doc in col.find({"repo_url": repo_url}, {"_id": 1}).sort("timestamp", -1).limit(10)
+    ]
+    col.delete_many({"repo_url": repo_url, "_id": {"$nin": ids_to_keep}})
+
 
 def get_repo_history(repo_url):
-    """Gets history for a specific repository."""
-    history = load_all_history()
-    return history.get(repo_url, [])
+    docs = list(
+        repo_history_col()
+        .find({"repo_url": repo_url}, {"_id": 0, "repo_url": 0})
+        .sort("timestamp", -1)
+        .limit(10)
+    )
+    return docs
+
 
 def clear_repo_history(repo_url):
-    """Clears history for a specific repository."""
-    history = load_all_history()
-    if repo_url in history:
-        del history[repo_url]
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=4)
-        return True
-    return False
+    result = repo_history_col().delete_many({"repo_url": repo_url})
+    return result.deleted_count > 0

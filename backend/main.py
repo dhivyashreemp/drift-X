@@ -215,7 +215,11 @@ def member_history(email: str, authorization: str = Header(default="")):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "api_key_set": bool(os.getenv("GOOGLE_API_KEY"))}
+    return {
+        "status": "ok",
+        "bedrock_configured": bool(os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")),
+        "model": os.getenv("BEDROCK_MODEL_ID", "openai.gpt-oss-120b-1:0"),
+    }
 
 
 @app.get("/api/auth/providers")
@@ -266,35 +270,43 @@ async def fetch_repo(
 
 def _run_job(
     job_id: str,
-    repo_url: str,
-    branch_val: Optional[str],
-    token_val: Optional[str],
+    repos: list,
     requirements_text: str,
     dos_donts_text: str,
     module_name: str,
-    base_commit: Optional[str],
-    head_commit: Optional[str],
     user_email: str,
     user_name: str,
 ):
     try:
-        _jobs[job_id].update(status="running", progress="Preparing repository…")
+        _jobs[job_id].update(status="running", progress="Preparing repositories…")
 
-        cache_key = (repo_url, branch_val)
-        if cache_key not in _repo_cache:
-            repo_path = clone_repo(repo_url, branch=branch_val, token=token_val)
-            _repo_cache[cache_key] = repo_path
-        repo_path = _repo_cache[cache_key]
+        # Clone each repo and build (path, label) pairs
+        repo_entries = []
+        for r in repos:
+            url = r["url"]
+            branch = r.get("branch") or None
+            token = r.get("token") or None
+            cache_key = (url, branch)
+            if cache_key not in _repo_cache:
+                _repo_cache[cache_key] = clone_repo(url, branch=branch, token=token)
+            repo_entries.append({
+                "path": _repo_cache[cache_key],
+                "url": url,
+                "base_commit": r.get("base_commit") or None,
+                "head_commit": r.get("head_commit") or None,
+            })
 
         agent = ComplianceAgent()
+        repo_paths_labeled = [(e["path"], e["url"]) for e in repo_entries]
+        combined_label = " + ".join(e["url"] for e in repo_entries)
 
         _jobs[job_id]["progress"] = "Running unified quality analysis…"
-        results = agent.unified_analysis(repo_path, requirements_text, dos_donts_text)
+        results = agent.unified_analysis(repo_paths_labeled, requirements_text, dos_donts_text)
 
         _jobs[job_id]["progress"] = "Analyzing feature evolution…"
+        history_entries = [(e["path"], e["base_commit"], e["head_commit"]) for e in repo_entries]
         history_results = agent.analyze_feature_loss_with_history(
-            repo_path, requirements_text, dos_donts_text,
-            base_commit=base_commit, head_commit=head_commit,
+            history_entries, requirements_text, dos_donts_text,
         )
 
         if history_results and history_results.get("feature_changes"):
@@ -314,12 +326,12 @@ def _run_job(
         if module_name:
             _jobs[job_id]["progress"] = f"Analysing module '{module_name}'…"
             module_results = agent.analyze_module_focus(
-                repo_path, module_name, requirements_text, dos_donts_text,
+                repo_paths_labeled, module_name, requirements_text, dos_donts_text,
             )
 
         final_score = results.get("score", 0)
         current_head = (history_results or {}).get("analysis_metadata", {}).get("head_commit")
-        save_analysis(repo_url, "Unified", final_score, results.get("summary", ""), last_commit_hash=current_head)
+        save_analysis(combined_label, "Unified", final_score, results.get("summary", ""), last_commit_hash=current_head)
 
         if user_email:
             all_issues = results.get("issues", [])
@@ -328,7 +340,7 @@ def _run_job(
                 for w in ["loss", "drift", "violation", "missing", "failed"]
             )]
             record_analysis(
-                user_email, user_name, repo_url, final_score,
+                user_email, user_name, combined_label, final_score,
                 results.get("summary", ""),
                 issue_count=len(all_issues),
                 critical_count=len(critical),
@@ -338,8 +350,8 @@ def _run_job(
             results=results,
             history_results=history_results,
             module_results=module_results,
-            repo_url=repo_url,
-            branch=branch_val or "",
+            repo_url=combined_label,
+            branch=", ".join(r.get("branch") or "default" for r in repos),
             module_name=module_name,
         )
 
@@ -366,17 +378,24 @@ def _run_job(
 
 @app.post("/api/analyze")
 async def start_analysis(
-    repo_url: str = Form(...),
-    branch: str = Form(""),
-    git_token: str = Form(""),
+    repos_json: str = Form(...),
     module_name: str = Form(""),
-    base_commit: str = Form(""),
-    head_commit: str = Form(""),
     requirements_files: List[UploadFile] = File(...),
     dos_donts_files: Optional[List[UploadFile]] = File(default=None),
     authorization: str = Header(default=""),
 ):
     user = _require_user(authorization)
+
+    try:
+        import json as _json
+        repos = _json.loads(repos_json)
+        if not isinstance(repos, list) or not repos:
+            raise ValueError("repos_json must be a non-empty list")
+        repos = [r for r in repos if r.get("url", "").strip()]
+        if not repos:
+            raise HTTPException(status_code=400, detail="At least one repository URL is required.")
+    except (ValueError, Exception) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid repos_json: {e}")
 
     req_text = ""
     for f in requirements_files:
@@ -395,14 +414,10 @@ async def start_analysis(
         target=_run_job,
         args=(
             job_id,
-            repo_url.strip(),
-            branch.strip() or None,
-            git_token.strip() or None,
+            repos,
             req_text,
             dos_text,
             module_name.strip(),
-            base_commit.strip() or None,
-            head_commit.strip() or None,
             user["email"],
             user["name"],
         ),

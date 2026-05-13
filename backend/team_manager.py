@@ -1,31 +1,11 @@
-import json
-import os
 from datetime import datetime, timedelta
-
-TEAM_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "team_history.json"
-)
+from db import analyses_col
 
 
 def _week_start() -> str:
     today = datetime.now()
     monday = today - timedelta(days=today.weekday())
     return monday.strftime("%Y-%m-%d")
-
-
-def _load() -> dict:
-    if not os.path.exists(TEAM_FILE):
-        return {}
-    try:
-        with open(TEAM_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def _save(data: dict) -> None:
-    with open(TEAM_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
 
 
 def record_analysis(
@@ -37,10 +17,10 @@ def record_analysis(
     issue_count: int = 0,
     critical_count: int = 0,
 ) -> None:
-    data = _load()
-    if email not in data:
-        data[email] = {"name": name, "email": email, "analyses": []}
+    col = analyses_col()
     entry = {
+        "email": email,
+        "name": name,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "date": datetime.now().strftime("%Y-%m-%d"),
         "repo_url": repo_url,
@@ -49,29 +29,49 @@ def record_analysis(
         "issue_count": issue_count,
         "critical_count": critical_count,
     }
-    data[email]["analyses"].insert(0, entry)
-    data[email]["analyses"] = data[email]["analyses"][:50]
-    _save(data)
+    col.insert_one(entry)
+
+    # Keep only the 50 most recent analyses per user
+    ids_to_keep = [
+        doc["_id"]
+        for doc in col.find({"email": email}, {"_id": 1}).sort("timestamp", -1).limit(50)
+    ]
+    col.delete_many({"email": email, "_id": {"$nin": ids_to_keep}})
 
 
 def get_team_summary() -> list[dict]:
-    data = _load()
+    col = analyses_col()
+    pipeline = [
+        {"$sort": {"timestamp": -1}},
+        {
+            "$group": {
+                "_id": "$email",
+                "name": {"$first": "$name"},
+                "analyses": {"$push": "$$ROOT"},
+            }
+        },
+    ]
+    records = list(col.aggregate(pipeline))
+    today = datetime.now().strftime("%Y-%m-%d")
+    week_start = _week_start()
+
     summary = []
-    for email, record in data.items():
-        analyses = record.get("analyses", [])
+    for record in records:
+        analyses = record["analyses"]
         latest = analyses[0] if analyses else None
-        today = datetime.now().strftime("%Y-%m-%d")
-        today_scores = [a["score"] for a in analyses if a.get("date") == today]
         prev = analyses[1] if len(analyses) > 1 else None
+
         if latest and prev:
             diff = latest["score"] - prev["score"]
             trend = "up" if diff > 2 else ("down" if diff < -2 else "flat")
         else:
             trend = None
 
+        today_scores = [a["score"] for a in analyses if a.get("date") == today]
+
         summary.append({
-            "email": email,
-            "name": record.get("name", email),
+            "email": record["_id"],
+            "name": record["name"],
             "latest_score": latest["score"] if latest else None,
             "prev_score": prev["score"] if prev else None,
             "score_trend": trend,
@@ -83,11 +83,17 @@ def get_team_summary() -> list[dict]:
             "analyses_count": len(analyses),
             "today_scores": today_scores,
             "today_avg": round(sum(today_scores) / len(today_scores), 1) if today_scores else None,
-            "this_week_count": len([a for a in analyses if a.get("date", "") >= _week_start()]),
+            "this_week_count": len([a for a in analyses if a.get("date", "") >= week_start]),
         })
+
     return sorted(summary, key=lambda x: (x["latest_score"] or -1), reverse=True)
 
 
 def get_user_history(email: str) -> list[dict]:
-    data = _load()
-    return data.get(email, {}).get("analyses", [])
+    docs = list(
+        analyses_col()
+        .find({"email": email}, {"_id": 0, "email": 0, "name": 0})
+        .sort("timestamp", -1)
+        .limit(50)
+    )
+    return docs

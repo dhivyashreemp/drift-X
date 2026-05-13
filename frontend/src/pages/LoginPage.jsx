@@ -73,30 +73,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 flex">
-      {/* Left accent panel */}
-      <div className="hidden lg:flex w-72 bg-navy-900 border-r border-navy-700 flex-col justify-between p-8 shrink-0">
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Left brand panel */}
+      <div className="hidden lg:flex w-80 bg-slate-800 flex-col justify-between p-10 shrink-0">
         <div>
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-8 h-8 bg-orange-500 flex items-center justify-center">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="w-9 h-9 bg-orange-500 flex items-center justify-center rounded-sm">
               <span className="text-white text-xs font-black">DX</span>
             </div>
             <div>
-              <p className="text-white font-bold text-sm">Drift-X</p>
-              <p className="text-orange-500/60 text-[9px] font-semibold tracking-widest uppercase">Quality Gateway</p>
+              <p className="text-white font-bold text-base">Drift-X</p>
+              <p className="text-orange-400/70 text-[9px] font-semibold tracking-widest uppercase">Quality Gateway</p>
             </div>
           </div>
-          <div className="space-y-6">
+          <h1 className="text-xl font-bold text-white mb-2">AI-Powered Code Quality Gatekeeper</h1>
+          <p className="text-sm text-slate-400 mb-10">Catch requirement drift, security risks, and feature loss before they reach production.</p>
+          <div className="space-y-5">
             {[
-              { icon: '⬡', title: 'Requirement Drift Detection', desc: 'AI-powered analysis against your spec docs' },
-              { icon: '⬡', title: 'Feature Loss Tracking', desc: 'Catch regressions across commit history' },
-              { icon: '⬡', title: 'Team Compliance View', desc: 'Daily scores for every developer' },
-              { icon: '⬡', title: 'PDF Audit Reports', desc: 'Downloadable reports for QA sign-off' },
+              { title: 'Requirement Drift Detection', desc: 'AI analysis against your spec documents' },
+              { title: 'Security & Quality Audit', desc: 'OWASP, code quality, error handling checks' },
+              { title: 'Feature Loss Tracking', desc: 'Catch regressions across commit history' },
+              { title: 'Team Compliance Dashboard', desc: 'Daily scores for every developer' },
+              { title: 'PDF Audit Reports', desc: 'Downloadable reports for QA sign-off' },
             ].map((f, i) => (
               <div key={i} className="flex gap-3">
-                <span className="text-orange-500 text-xs mt-0.5 shrink-0">▸</span>
+                <span className="text-orange-500 text-xs mt-1 shrink-0">▸</span>
                 <div>
-                  <p className="text-xs font-semibold text-white">{f.title}</p>
+                  <p className="text-sm font-semibold text-slate-200">{f.title}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{f.desc}</p>
                 </div>
               </div>
@@ -111,46 +114,44 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-8 h-8 bg-orange-500 flex items-center justify-center">
+            <div className="w-8 h-8 bg-orange-500 flex items-center justify-center rounded-sm">
               <span className="text-white text-xs font-black">DX</span>
             </div>
             <div>
-              <p className="text-white font-bold text-sm">Drift-X</p>
-              <p className="text-orange-500/60 text-[9px] font-semibold tracking-widest uppercase">Quality Gateway</p>
+              <p className="text-slate-900 font-bold text-sm">Drift-X</p>
+              <p className="text-orange-500/70 text-[9px] font-semibold tracking-widest uppercase">Quality Gateway</p>
             </div>
           </div>
 
-          <h2 className="text-xl font-bold text-white mb-1">
-            {mode === 'login' ? 'Sign in to your account' : 'Create an account'}
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">
+            {mode === 'login' ? 'Welcome back' : 'Create account'}
           </h2>
           <p className="text-sm text-slate-500 mb-6">
-            {mode === 'login' ? 'Enter your credentials to continue' : 'Register with your office email'}
+            {mode === 'login' ? 'Sign in to your workspace' : 'Register with your office email'}
           </p>
 
-          <div className="bg-navy-900 border border-navy-700 p-6 space-y-5">
+          <div className="bg-white border border-slate-200 p-6 space-y-5 rounded-sm shadow-sm">
 
-            {/* Microsoft SSO */}
             {msAvailable && (
               <>
                 <button
                   type="button"
                   onClick={handleMicrosoftLogin}
                   disabled={msLoading}
-                  className="w-full flex items-center justify-center gap-3 py-2.5 bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-800 font-semibold text-sm transition-colors border border-slate-200"
+                  className="w-full flex items-center justify-center gap-3 py-2.5 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-800 font-semibold text-sm transition-colors border border-slate-300 rounded-sm"
                 >
                   {msLoading ? <span className="animate-spin text-slate-500">⟳</span> : <MicrosoftIcon />}
-                  {msLoading ? 'Redirecting…' : 'Sign in with Microsoft'}
+                  {msLoading ? 'Redirecting...' : 'Sign in with Microsoft'}
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-navy-700" />
-                  <span className="text-xs text-slate-600 font-medium">OR</span>
-                  <div className="flex-1 h-px bg-navy-700" />
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-xs text-slate-400 font-medium">OR</span>
+                  <div className="flex-1 h-px bg-slate-200" />
                 </div>
               </>
             )}
 
-            {/* Mode toggle */}
-            <div className="flex border border-navy-700">
+            <div className="flex border border-slate-200 rounded-sm overflow-hidden">
               {['login', 'register'].map(m => (
                 <button
                   key={m}
@@ -159,7 +160,7 @@ export default function LoginPage() {
                   className={`flex-1 py-2 text-xs font-semibold transition-colors uppercase tracking-wide ${
                     mode === m
                       ? 'bg-orange-500 text-white'
-                      : 'text-slate-400 hover:text-white hover:bg-navy-800'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
                   }`}
                 >
                   {m === 'login' ? 'Sign In' : 'Register'}
@@ -167,7 +168,6 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* Form */}
             <form onSubmit={submit} className="space-y-4">
               {mode === 'register' && (
                 <Field label="Full Name" type="text" value={name} onChange={setName} placeholder="Jane Smith" required />
@@ -183,31 +183,31 @@ export default function LoginPage() {
               />
               {mode === 'register' && (
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1.5 font-medium uppercase tracking-wide">
-                    Manager Invite Code <span className="text-slate-600 normal-case tracking-normal">— optional</span>
+                  <label className="text-xs text-slate-600 block mb-1.5 font-medium uppercase tracking-wide">
+                    Manager Invite Code <span className="text-slate-400 normal-case tracking-normal">— optional</span>
                   </label>
                   <input
                     type="password"
                     value={inviteCode}
                     onChange={e => setInviteCode(e.target.value)}
                     placeholder="Leave blank for developer access"
-                    className="w-full bg-navy-800 border border-navy-700 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-orange-500 transition-colors"
+                    className="w-full bg-white border border-slate-300 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 transition-colors rounded-sm"
                   />
                 </div>
               )}
 
               {error && (
-                <div className="bg-red-950/40 border border-red-800 px-3 py-2.5">
-                  <p className="text-red-400 text-sm">{error}</p>
+                <div className="bg-red-50 border border-red-300 px-3 py-2.5 rounded-sm">
+                  <p className="text-red-700 text-sm">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold text-sm transition-colors uppercase tracking-wide"
+                className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold text-sm transition-colors uppercase tracking-wide rounded-sm"
               >
-                {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
+                {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
               </button>
             </form>
           </div>
@@ -220,14 +220,14 @@ export default function LoginPage() {
 function Field({ label, type, value, onChange, placeholder, required }) {
   return (
     <div>
-      <label className="text-xs text-slate-400 block mb-1.5 font-medium uppercase tracking-wide">{label}</label>
+      <label className="text-xs text-slate-600 block mb-1.5 font-medium uppercase tracking-wide">{label}</label>
       <input
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full bg-navy-800 border border-navy-700 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-orange-500 transition-colors"
+        className="w-full bg-white border border-slate-300 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 transition-colors rounded-sm"
       />
     </div>
   )

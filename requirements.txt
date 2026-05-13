@@ -1,6 +1,9 @@
-streamlit
+pymongo[srv]
+json-repair
+dnspython
 PyPDF2
-langchain-google-genai
+langchain-aws
+boto3
 langchain
 langchain-core
 python-dotenv

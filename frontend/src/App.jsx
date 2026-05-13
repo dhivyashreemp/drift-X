@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
 import NavBar from './components/NavBar'
@@ -9,21 +9,25 @@ import MyScoreView from './components/MyScoreView'
 
 const POLL_MS = 3000
 
+const makeRepo = () => ({
+  id: crypto.randomUUID(),
+  url: '',
+  branch: '',
+  token: '',
+  commits: [],
+  headCommit: '',
+  baseCommit: '',
+  fetchStatus: 'idle',
+  fetchError: '',
+})
+
 function AnalysisView() {
   const { authFetch } = useAuth()
 
-  const [repoUrl, setRepoUrl] = useState('')
-  const [branch, setBranch] = useState('')
+  const [repos, setRepos] = useState([makeRepo()])
   const [moduleName, setModuleName] = useState('')
-  const [gitToken, setGitToken] = useState(() => localStorage.getItem('driftx_git_token') || '')
   const [requirementsFiles, setRequirementsFiles] = useState([])
   const [dosDontsFiles, setDosDontsFiles] = useState([])
-
-  const [commits, setCommits] = useState([])
-  const [headCommit, setHeadCommit] = useState('')
-  const [baseCommit, setBaseCommit] = useState('')
-  const [fetchStatus, setFetchStatus] = useState('idle')
-  const [fetchError, setFetchError] = useState('')
 
   const [jobId, setJobId] = useState(null)
   const [analysisStatus, setAnalysisStatus] = useState('idle')
@@ -32,30 +36,35 @@ function AnalysisView() {
   const [isPrivateRepoError, setIsPrivateRepoError] = useState(false)
   const pollRef = useRef(null)
 
-  useEffect(() => () => clearInterval(pollRef.current), [])
+  const updateRepo = (id, patch) =>
+    setRepos(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r))
 
-  const handleFetchRepo = async () => {
-    if (!repoUrl.trim()) return
-    setFetchStatus('loading')
-    setFetchError('')
-    setCommits([])
+  const addRepo = () => setRepos(prev => [...prev, makeRepo()])
+
+  const removeRepo = (id) =>
+    setRepos(prev => prev.length > 1 ? prev.filter(r => r.id !== id) : prev)
+
+  const handleFetchRepo = async (repoId) => {
+    const repo = repos.find(r => r.id === repoId)
+    if (!repo?.url.trim()) return
+    updateRepo(repoId, { fetchStatus: 'loading', fetchError: '', commits: [] })
     try {
       const fd = new FormData()
-      fd.append('repo_url', repoUrl.trim())
-      fd.append('branch', branch.trim())
-      fd.append('git_token', gitToken.trim())
+      fd.append('repo_url', repo.url.trim())
+      fd.append('branch', repo.branch.trim())
+      fd.append('git_token', repo.token.trim())
       const res = await authFetch('/api/fetch-repo', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Failed to fetch repository')
-      setCommits(data.commits)
-      if (data.commits.length > 0) {
-        setHeadCommit(data.commits[0].hash)
-        setBaseCommit(data.commits[data.commits.length - 1].hash)
-      }
-      setFetchStatus('success')
+      updateRepo(repoId, {
+        commits: data.commits,
+        headCommit: data.commits[0]?.hash || '',
+        baseCommit: data.commits[data.commits.length - 1]?.hash || '',
+        fetchStatus: 'success',
+        fetchError: '',
+      })
     } catch (e) {
-      setFetchError(e.message)
-      setFetchStatus('error')
+      updateRepo(repoId, { fetchError: e.message, fetchStatus: 'error' })
     }
   }
 
@@ -81,26 +90,34 @@ function AnalysisView() {
   }
 
   const handleStartAnalysis = async () => {
-    if (!repoUrl.trim() || requirementsFiles.length === 0) return
+    const activeRepos = repos.filter(r => r.url.trim())
+    if (!activeRepos.length || requirementsFiles.length === 0) return
+
     setAnalysisStatus('running')
-    setProgressMessage('Submitting analysis job…')
+    setProgressMessage('Submitting analysis job...')
     setAnalysisResult(null)
     setIsPrivateRepoError(false)
+
     try {
+      const reposData = activeRepos.map(r => ({
+        url: r.url.trim(),
+        branch: r.branch.trim(),
+        token: r.token.trim(),
+        base_commit: r.baseCommit,
+        head_commit: r.headCommit,
+      }))
+
       const fd = new FormData()
-      fd.append('repo_url', repoUrl.trim())
-      fd.append('branch', branch.trim())
-      fd.append('git_token', gitToken.trim())
+      fd.append('repos_json', JSON.stringify(reposData))
       fd.append('module_name', moduleName.trim())
-      fd.append('base_commit', baseCommit)
-      fd.append('head_commit', headCommit)
       requirementsFiles.forEach(f => fd.append('requirements_files', f))
       dosDontsFiles.forEach(f => fd.append('dos_donts_files', f))
+
       const res = await authFetch('/api/analyze', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Failed to start analysis')
       setJobId(data.job_id)
-      setProgressMessage('Analysis queued…')
+      setProgressMessage('Analysis queued...')
       startPolling(data.job_id)
     } catch (e) {
       setAnalysisStatus('error')
@@ -122,80 +139,70 @@ function AnalysisView() {
     }
   }
 
-  const canAnalyze = repoUrl.trim() && requirementsFiles.length > 0 && analysisStatus !== 'running'
+  const canAnalyze = repos.some(r => r.url.trim()) && requirementsFiles.length > 0 && analysisStatus !== 'running'
+  const repoCount = repos.filter(r => r.url.trim()).length
 
   return (
     <div className="flex flex-1 overflow-hidden">
       <Sidebar
-        repoUrl={repoUrl} setRepoUrl={setRepoUrl}
-        branch={branch} setBranch={setBranch}
-        moduleName={moduleName} setModuleName={setModuleName}
-        gitToken={gitToken} setGitToken={setGitToken}
-        requirementsFiles={requirementsFiles} setRequirementsFiles={setRequirementsFiles}
-        dosDontsFiles={dosDontsFiles} setDosDontsFiles={setDosDontsFiles}
-        commits={commits}
-        headCommit={headCommit} setHeadCommit={setHeadCommit}
-        baseCommit={baseCommit} setBaseCommit={setBaseCommit}
-        fetchStatus={fetchStatus} fetchError={fetchError}
+        repos={repos}
+        onUpdateRepo={updateRepo}
         onFetchRepo={handleFetchRepo}
+        onAddRepo={addRepo}
+        onRemoveRepo={removeRepo}
+        moduleName={moduleName}
+        setModuleName={setModuleName}
+        requirementsFiles={requirementsFiles}
+        setRequirementsFiles={setRequirementsFiles}
+        dosDontsFiles={dosDontsFiles}
+        setDosDontsFiles={setDosDontsFiles}
         onStartAnalysis={handleStartAnalysis}
         canAnalyze={canAnalyze}
         analysisRunning={analysisStatus === 'running'}
       />
 
-      <main className="flex-1 overflow-y-auto bg-navy-950">
+      <main className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-6 max-w-5xl mx-auto">
           {analysisStatus === 'idle' && !analysisResult && (
-            <div className="flex flex-col items-center justify-center h-72 text-slate-600 border border-dashed border-navy-700 bg-navy-900/30">
-              <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center h-72 text-slate-400 border border-dashed border-slate-300 bg-white rounded-sm">
+              <div className="w-16 h-16 bg-orange-50 border border-orange-200 flex items-center justify-center mb-4 rounded-sm">
                 <span className="text-3xl">🛡️</span>
               </div>
-              <p className="text-base text-slate-400 font-medium">Configure a repository and run an analysis</p>
-              <p className="text-sm text-slate-600 mt-1">Add your repo URL and requirement docs to get started</p>
+              <p className="text-base text-slate-600 font-medium">Configure repositories and run an analysis</p>
+              <p className="text-sm text-slate-400 mt-1">Add repo URLs and requirement docs to get started</p>
             </div>
           )}
 
           {analysisStatus === 'running' && (
-            <div className="flex flex-col items-center justify-center h-72">
+            <div className="flex flex-col items-center justify-center h-72 bg-white border border-slate-200">
               <div className="relative mb-6">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500" />
-                <div className="absolute inset-0 rounded-full h-16 w-16 border-2 border-navy-700" />
+                <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-orange-500" />
+                <div className="absolute inset-0 rounded-full h-14 w-14 border-2 border-slate-200" />
               </div>
-              <p className="text-orange-400 text-lg font-semibold">{progressMessage}</p>
-              <p className="text-slate-600 text-sm mt-2">This typically takes 2–4 minutes</p>
+              <p className="text-orange-600 text-base font-semibold">{progressMessage}</p>
+              <p className="text-slate-400 text-sm mt-2">
+                Analysing {repoCount} repo{repoCount !== 1 ? 's' : ''} — this typically takes 2–5 minutes
+              </p>
             </div>
           )}
 
           {analysisStatus === 'error' && (
-            <div className={`border p-5 ${isPrivateRepoError ? 'bg-amber-950/30 border-amber-800' : 'bg-red-950/40 border-red-800'}`}>
+            <div className={`border p-5 rounded-sm ${isPrivateRepoError ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
               {isPrivateRepoError ? (
                 <>
-                  <p className="text-amber-400 font-semibold text-base">🔒 Private Repository Access Denied</p>
-                  <p className="text-amber-300/80 text-sm mt-2">{progressMessage}</p>
-                  <div className="mt-4 bg-amber-950/40 border border-amber-900 p-3 text-sm text-amber-200/80 space-y-1">
-                    <p className="font-medium text-amber-300">How to fix:</p>
-                    <p>1. Open the <strong>🔑 GitHub Personal Access Token</strong> field in the sidebar.</p>
-                    <p>2. Enter your PAT (needs <code className="bg-navy-800 px-1">repo</code> scope).</p>
-                    <p>3. Click <strong>Fetch Repository</strong> first, then <strong>Start Analysis</strong> again.</p>
-                  </div>
-                  <a
-                    href="https://github.com/settings/tokens/new?scopes=repo&description=DriftX"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block mt-3 text-xs text-orange-400 hover:underline"
-                  >
-                    Generate a new GitHub PAT ↗
-                  </a>
+                  <p className="text-amber-700 font-semibold text-base">Private Repository Access Denied</p>
+                  <p className="text-amber-600 text-sm mt-2">{progressMessage}</p>
+                  <p className="text-amber-500 text-xs mt-3">Add a GitHub token to the relevant repository card in the sidebar and retry.</p>
                 </>
               ) : (
                 <>
-                  <p className="text-red-400 font-medium">Analysis failed</p>
-                  <p className="text-red-300/70 text-sm mt-1">{progressMessage}</p>
+                  <p className="text-red-700 font-medium">Analysis failed</p>
+                  <p className="text-red-600 text-sm mt-1">{progressMessage}</p>
                 </>
               )}
               <button
                 onClick={() => { setAnalysisStatus('idle'); setIsPrivateRepoError(false) }}
-                className="mt-4 text-sm text-slate-500 hover:text-white underline block"
+                className="mt-4 text-sm text-slate-500 hover:text-slate-800 underline block"
               >
                 Dismiss
               </button>
@@ -207,7 +214,7 @@ function AnalysisView() {
               results={analysisResult.results}
               historyResults={analysisResult.history_results}
               moduleResults={analysisResult.module_results}
-              repoUrl={repoUrl}
+              repoUrl={repos.filter(r => r.url.trim()).map(r => r.url.trim()).join(' + ')}
               jobId={jobId}
               onDownloadPDF={handleDownloadPDF}
             />
@@ -225,7 +232,7 @@ function AppShell() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-navy-950 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-orange-500" />
       </div>
     )
@@ -234,18 +241,26 @@ function AppShell() {
   if (!user) return <LoginPage />
 
   const handleSetView = (v) => {
-    if (isManager && v !== 'team') return
-    if (!isManager && v === 'team') return
+    if (v === 'team' && !isManager) return
     setView(v)
   }
 
   return (
-    <div className="flex flex-col h-screen bg-navy-950 text-slate-100">
+    <div className="flex flex-col h-screen bg-slate-50 text-slate-900">
       <NavBar view={view} onSetView={handleSetView} />
       <div className="flex-1 overflow-hidden flex flex-col">
-        {isManager && <div className="flex-1 overflow-y-auto"><TeamDashboard /></div>}
-        {!isManager && view === 'analysis' && <AnalysisView />}
-        {!isManager && view === 'my-scores' && <div className="flex-1 overflow-y-auto"><MyScoreView /></div>}
+        {/* All views are always mounted — only visibility toggled — preserves state across tabs */}
+        {isManager && (
+          <div className={`flex-1 overflow-y-auto ${view === 'team' ? '' : 'hidden'}`}>
+            <TeamDashboard />
+          </div>
+        )}
+        <div className={`flex flex-1 overflow-hidden ${view === 'analysis' ? '' : 'hidden'}`}>
+          <AnalysisView />
+        </div>
+        <div className={`flex-1 overflow-y-auto ${view === 'my-scores' ? '' : 'hidden'}`}>
+          <MyScoreView />
+        </div>
       </div>
     </div>
   )

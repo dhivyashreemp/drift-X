@@ -23,6 +23,9 @@ users.json
 # Cloned repos (temp)
 /tmp_repos/
 
+# Claude Code local memory (not project code)
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

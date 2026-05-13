@@ -29,19 +29,73 @@ C_BORDER    = colors.HexColor("#e2e8f0")
 PAGE_W      = A4[0] - 4 * cm   # usable width
 
 
-def _safe(text, max_len=600):
+def _safe(text, max_len=1200):
     if not text:
         return ""
-    t = str(text).replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;")
+    t = str(text)
+    # Replace Unicode chars that Helvetica cannot render (would show as ■)
+    _REPLACEMENTS = [
+        ("—", "--"),   # em dash  —
+        ("–", "-"),    # en dash  –
+        ("‒", "-"),    # figure dash
+        ("‑", "-"),    # non-breaking hyphen
+        ("‐", "-"),    # hyphen
+        ("―", "--"),   # horizontal bar
+        ("’", "'"),    # right single quote '
+        ("‘", "'"),    # left single quote '
+        ("“", '"'),    # left double quote "
+        ("”", '"'),    # right double quote "
+        ("…", "..."),  # ellipsis …
+        ("·", "-"),    # middle dot
+        ("•", "-"),    # bullet •
+        (" ", " "),    # non-breaking space
+        ("→", "->"),   # arrow →
+        ("←", "<-"),   # left arrow ←
+        ("×", "x"),    # multiplication sign ×
+        ("é", "e"),    # é
+        ("à", "a"),    # à
+        ("❤", "<3"),   # heart
+    ]
+    for src, dst in _REPLACEMENTS:
+        t = t.replace(src, dst)
+    # Strip any remaining non-Latin-1 chars (keeps ReportLab happy)
+    t = t.encode("latin-1", errors="replace").decode("latin-1")
+    t = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return t[:max_len]
+
+
+_TYPE_LABEL_MAP = {
+    "security vulnerability": "Security Risk",
+    "security": "Security Risk",
+    "requirement drift": "Requirement Mismatch",
+    "drift": "Requirement Mismatch",
+    "feature completeness": "Incomplete Feature",
+    "completeness": "Incomplete Feature",
+    "guideline violation": "Best Practice Violation",
+    "guideline": "Best Practice Violation",
+    "code quality": "Code Quality Issue",
+    "error handling": "Error Handling Gap",
+    "testing gap": "Missing Tests",
+    "testing": "Missing Tests",
+    "critical feature loss": "Critical Feature Removed",
+    "feature loss": "Feature Removed",
+}
+
+
+def _friendly_type(raw_type: str) -> str:
+    key = raw_type.lower().strip()
+    for k, v in _TYPE_LABEL_MAP.items():
+        if k in key:
+            return v
+    return raw_type
 
 
 def _score_color(score):
     if score >= 80:
-        return C_GREEN, C_GREEN_LT, "PASSED", "✓"
+        return C_GREEN, C_GREEN_LT, "PASSED"
     if score >= 60:
-        return C_AMBER, C_AMBER_LT, "WARNING", "⚠"
-    return C_RED, C_RED_LT, "FAILED", "✗"
+        return C_AMBER, C_AMBER_LT, "WARNING"
+    return C_RED, C_RED_LT, "FAILED"
 
 
 # ── Score bar flowable ────────────────────────────────────────────────────────
@@ -90,27 +144,27 @@ def _make_styles():
                        fontName="Helvetica-Bold", spaceAfter=2),
         "subtitle": s("ST", fontSize=10, textColor=colors.HexColor("#cbd5e1"),
                        fontName="Helvetica"),
-        "h2":       s("H2", "Heading2", fontSize=13, spaceBefore=14, spaceAfter=6,
+        "h2":       s("H2", "Heading2", fontSize=14, spaceBefore=16, spaceAfter=6,
                        textColor=C_NAVY, fontName="Helvetica-Bold",
                        borderPad=4, borderColor=C_BORDER),
-        "h3":       s("H3", "Heading3", fontSize=10, spaceBefore=8, spaceAfter=4,
+        "h3":       s("H3", "Heading3", fontSize=11, spaceBefore=10, spaceAfter=4,
                        textColor=C_INDIGO, fontName="Helvetica-Bold"),
-        "body":     s("B", fontSize=9, textColor=C_NAVY, leading=13),
-        "small":    s("Sm", fontSize=8, textColor=C_SLATE),
-        "code":     s("Co", fontSize=8, fontName="Courier",
+        "body":     s("B", fontSize=11, textColor=C_NAVY, leading=16),
+        "small":    s("Sm", fontSize=9, textColor=C_SLATE, leading=13),
+        "code":     s("Co", fontSize=9, fontName="Courier",
                        backColor=colors.HexColor("#f1f5f9"),
-                       leftIndent=8, rightIndent=8, leading=11),
-        "bold":     s("Bd", fontSize=9, fontName="Helvetica-Bold", textColor=C_NAVY),
-        "center":   s("Ctr", fontSize=9, alignment=TA_CENTER, textColor=C_SLATE),
-        "tag_red":  s("TR", fontSize=8, fontName="Helvetica-Bold",
+                       leftIndent=8, rightIndent=8, leading=13),
+        "bold":     s("Bd", fontSize=11, fontName="Helvetica-Bold", textColor=C_NAVY),
+        "center":   s("Ctr", fontSize=10, alignment=TA_CENTER, textColor=C_SLATE),
+        "tag_red":  s("TR", fontSize=9, fontName="Helvetica-Bold",
                        textColor=C_RED, alignment=TA_CENTER),
-        "tag_grn":  s("TG", fontSize=8, fontName="Helvetica-Bold",
+        "tag_grn":  s("TG", fontSize=9, fontName="Helvetica-Bold",
                        textColor=C_GREEN, alignment=TA_CENTER),
-        "tag_amb":  s("TA", fontSize=8, fontName="Helvetica-Bold",
+        "tag_amb":  s("TA", fontSize=9, fontName="Helvetica-Bold",
                        textColor=C_AMBER, alignment=TA_CENTER),
-        "remediation": s("Rem", fontSize=8, textColor=colors.HexColor("#1e40af"),
-                          backColor=C_BLUE_LT, leftIndent=8, rightIndent=8,
-                          spaceBefore=3, leading=12),
+        "remediation": s("Rem", fontSize=10, textColor=colors.HexColor("#1e40af"),
+                          backColor=C_BLUE_LT, leftIndent=10, rightIndent=10,
+                          spaceBefore=4, leading=15),
     }
 
 
@@ -124,59 +178,73 @@ def _section(title, styles, icon=""):
 
 
 # ── Issue card ────────────────────────────────────────────────────────────────
+_LABEL_W = 3.5 * cm
+
 def _issue_card(idx, issue, styles):
-    itype  = _safe(issue.get("type", "Issue"), 60)
-    desc   = _safe(issue.get("description", ""), 400)
-    ev     = _safe(issue.get("evidence", ""), 300)
-    reason = _safe(issue.get("reasoning", ""), 400)
-    remed  = _safe(issue.get("remediation", ""), 500)
+    raw_type = issue.get("type", "Issue")
+    itype  = _friendly_type(_safe(raw_type, 80))
+    desc   = _safe(issue.get("description", ""), 800)
+    ev     = _safe(issue.get("evidence", ""), 600)
+    reason = _safe(issue.get("reasoning", ""), 800)
+    remed  = _safe(issue.get("remediation", ""), 1000)
 
-    critical = any(w in itype.lower() for w in
-                   ["loss", "drift", "violation", "missing", "failed"])
-    bg   = C_RED_LT   if critical else C_AMBER_LT
-    tag  = C_RED      if critical else C_AMBER
-    icon = "🚨"       if critical else "ℹ"
+    is_security = "security" in raw_type.lower()
+    critical = is_security or any(w in raw_type.lower() for w in
+                   ["loss", "drift", "violation", "missing", "failed", "error handling", "testing"])
+    bg   = colors.HexColor("#fff1f2") if is_security else (C_RED_LT if critical else C_AMBER_LT)
+    tag  = colors.HexColor("#be123c") if is_security else (C_RED if critical else C_AMBER)
+    icon = "🔒" if is_security else ("🚨" if critical else "⚠")
 
-    rows = []
-    # Header row
-    rows.append([
-        Paragraph(f"{icon} #{idx}", styles["bold"]),
-        Paragraph(f"<b>[{itype}]</b>", styles["bold"]),
-    ])
-    rows.append([
-        Paragraph("Description", styles["small"]),
-        Paragraph(desc, styles["body"]),
-    ])
+    rows = [
+        [
+            Paragraph(f"{icon} #{idx}", styles["bold"]),
+            Paragraph(f"<b>{itype}</b>", styles["bold"]),
+        ],
+        [
+            Paragraph("What happened", styles["small"]),
+            Paragraph(desc, styles["body"]),
+        ],
+    ]
     if ev:
         rows.append([
-            Paragraph("Evidence", styles["small"]),
+            Paragraph("Where in code", styles["small"]),
             Paragraph(ev, styles["code"]),
         ])
     if reason:
         rows.append([
-            Paragraph("Reasoning", styles["small"]),
+            Paragraph("Why it matters", styles["small"]),
             Paragraph(reason, styles["body"]),
         ])
     if remed:
         rows.append([
-            Paragraph("🤖 Fix", styles["small"]),
+            Paragraph("Recommended Fix", styles["small"]),
             Paragraph(remed, styles["remediation"]),
         ])
 
-    t = Table(rows, colWidths=[2.4 * cm, PAGE_W - 2.4 * cm])
+    t = Table(rows, colWidths=[_LABEL_W, PAGE_W - _LABEL_W])
     t.setStyle(TableStyle([
         ("BACKGROUND",   (0, 0), (-1, 0), bg),
         ("BACKGROUND",   (0, 1), (-1, -1), C_LIGHT),
         ("VALIGN",       (0, 0), (-1, -1), "TOP"),
         ("GRID",         (0, 0), (-1, -1), 0.4, C_BORDER),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING",   (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 5),
-        ("LINEABOVE",    (0, 0), (-1, 0), 2, tag),
-        ("SPAN",         (0, 0), (0, 0)),
+        ("LEFTPADDING",  (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING",   (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 6),
+        ("LINEABOVE",    (0, 0), (-1, 0), 2.5, tag),
     ]))
-    return KeepTogether([t, Spacer(1, 0.2 * cm)])
+    return KeepTogether([t, Spacer(1, 0.25 * cm)])
+
+
+# ── Page number callback ──────────────────────────────────────────────────────
+def _add_page_number(canvas, doc):
+    canvas.saveState()
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(C_SLATE)
+    page_num = canvas.getPageNumber()
+    canvas.drawRightString(A4[0] - 2 * cm, 0.7 * cm, f"Page {page_num}")
+    canvas.drawString(2 * cm, 0.7 * cm, "Drift-X — Confidential Quality Report")
+    canvas.restoreState()
 
 
 # ── Main generator ────────────────────────────────────────────────────────────
@@ -199,10 +267,11 @@ def generate_pdf_report(results, history_results=None, module_results=None,
     except Exception:
         pass
 
-    score_clr, score_bg, verdict, verdict_icon = _score_color(score)
+    score_clr, score_bg, verdict = _score_color(score)
     issues = results.get("issues", [])
     critical_issues = [i for i in issues if any(
-        w in i.get("type", "").lower() for w in ["loss", "drift", "violation", "missing", "failed"]
+        w in i.get("type", "").lower() for w in
+        ["loss", "drift", "violation", "missing", "failed", "security", "error handling", "testing"]
     )]
     feature_changes = (history_results or {}).get("feature_changes", [])
     losses = [c for c in feature_changes if "loss" in c.get("status", "").lower()]
@@ -250,21 +319,22 @@ def generate_pdf_report(results, history_results=None, module_results=None,
 
     # ── Score card ────────────────────────────────────────────────────────────
     score_label = Paragraph(
-        f'<font size="36" color="{score_clr.hexval()}">'
-        f'<b>{score:.0f}</b></font>'
-        f'<font size="16" color="{C_SLATE.hexval()}"> / 100</font>',
-        ParagraphStyle("SL", alignment=TA_CENTER)
+        f'<font size="40" color="{score_clr.hexval()}"><b>{score:.0f}</b></font>'
+        f'<font size="18" color="{C_SLATE.hexval()}"> / 100</font>',
+        ParagraphStyle("SL", alignment=TA_CENTER, leading=52, spaceBefore=4, spaceAfter=4)
     )
     verdict_label = Paragraph(
-        f'<font size="18" color="{score_clr.hexval()}"><b>{verdict_icon} {verdict}</b></font>',
-        ParagraphStyle("VL", alignment=TA_CENTER)
+        f'<font size="20" color="{score_clr.hexval()}"><b>{verdict}</b></font>',
+        ParagraphStyle("VL", alignment=TA_CENTER, leading=28, spaceBefore=2, spaceAfter=2)
     )
     threshold_note = Paragraph("Pass threshold: 80 / 100", st["center"])
 
     score_card = Table(
-        [[score_label], [verdict_label], [Spacer(1, 0.15 * cm)],
+        [[score_label],
+         [verdict_label],
+         [Spacer(1, 0.3 * cm)],
          [ScoreBar(score, PAGE_W - 1.6 * cm)],
-         [Spacer(1, 0.1 * cm)],
+         [Spacer(1, 0.15 * cm)],
          [threshold_note]],
         colWidths=[PAGE_W]
     )
@@ -311,21 +381,56 @@ def generate_pdf_report(results, history_results=None, module_results=None,
     story.append(stats_t)
     story.append(Spacer(1, 0.4 * cm))
 
-    # ── Summary ──────────────────────────────────────────────────────────────
-    summary_text = _safe(results.get("summary", "No summary available."), 1000)
-    story.extend(_section("Summary", st, "📋"))
+    # ── Executive summary table ───────────────────────────────────────────────
+    story.extend(_section("Executive Summary", st, "📋"))
+
+    security_issues = [i for i in issues if "security" in i.get("type", "").lower()]
+    testing_gaps    = [i for i in issues if "testing" in i.get("type", "").lower()]
+    eh_gaps         = [i for i in issues if "error" in i.get("type", "").lower()]
+
+    exec_rows = [
+        ["Overall Score", f"{score:.0f} / 100  —  {verdict}"],
+        ["Total Issues Found", str(len(issues))],
+        ["Critical Issues", str(len(critical_issues))],
+        ["Security Risks", str(len(security_issues))],
+        ["Error Handling Gaps", str(len(eh_gaps))],
+        ["Testing Gaps", str(len(testing_gaps))],
+        ["Feature Losses", str(len(losses))],
+        ["Repository", _safe(repo_url, 100).replace("https://github.com/", "github.com/")],
+        ["Branch / Version", _safe(branch, 60) if branch else "default"],
+        ["Analysis Date", datetime.now().strftime("%d %B %Y, %H:%M")],
+    ]
+    exec_t = Table(
+        [[Paragraph(r[0], st["bold"]), Paragraph(r[1], st["body"])] for r in exec_rows],
+        colWidths=[4.5 * cm, PAGE_W - 4.5 * cm]
+    )
+    exec_t.setStyle(TableStyle([
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [C_LIGHT, colors.white]),
+        ("GRID",           (0, 0), (-1, -1), 0.4, C_BORDER),
+        ("LEFTPADDING",    (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING",   (0, 0), (-1, -1), 10),
+        ("TOPPADDING",     (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING",  (0, 0), (-1, -1), 6),
+        ("TEXTCOLOR",      (0, 0), (0, -1), C_SLATE),
+    ]))
+    story.append(exec_t)
+    story.append(Spacer(1, 0.4 * cm))
+
+    summary_text = _safe(results.get("summary", "No summary available."), 2000)
+    story.append(Paragraph("<b>Analysis Overview</b>", st["bold"]))
+    story.append(Spacer(1, 0.15 * cm))
     story.append(Paragraph(summary_text, st["body"]))
 
     # ── Gate decision banner ──────────────────────────────────────────────────
     story.append(Spacer(1, 0.3 * cm))
     if score >= 80:
-        gate_text = "✅  Quality Gate PASSED — Code is ready for deployment."
+        gate_text = "QUALITY GATE PASSED  --  Code is ready for deployment."
         gate_bg, gate_clr = C_GREEN_LT, C_GREEN
     elif score >= 60:
-        gate_text = "⚠️  Quality Gate WARNING — Improvements recommended before deployment."
+        gate_text = "QUALITY GATE WARNING  --  Improvements recommended before deployment."
         gate_bg, gate_clr = C_AMBER_LT, C_AMBER
     else:
-        gate_text = "⛔  Quality Gate FAILED — Critical fixes required before deployment."
+        gate_text = "QUALITY GATE FAILED  --  Critical fixes required before deployment."
         gate_bg, gate_clr = C_RED_LT, C_RED
 
     gate_t = Table(
@@ -347,15 +452,15 @@ def generate_pdf_report(results, history_results=None, module_results=None,
     # ── Issues ────────────────────────────────────────────────────────────────
     if issues:
         story.append(PageBreak())
-        story.extend(_section(f"Issues ({len(issues)} found — {len(critical_issues)} critical)", st, "🚨"))
+        story.extend(_section(f"Issues Found  —  {len(issues)} total, {len(critical_issues)} critical", st, "🚨"))
 
-        # Summary table
+        # Summary table with friendly labels
         type_counts = {}
         for iss in issues:
-            t = iss.get("type", "Other")
-            type_counts[t] = type_counts.get(t, 0) + 1
+            label = _friendly_type(iss.get("type", "Other"))
+            type_counts[label] = type_counts.get(label, 0) + 1
         if type_counts:
-            tc_data = [["Issue Type", "Count"]] + [[_safe(k, 60), str(v)] for k, v in type_counts.items()]
+            tc_data = [["Category", "Count"]] + [[_safe(k, 80), str(v)] for k, v in type_counts.items()]
             tc_t = Table(tc_data, colWidths=[PAGE_W - 3 * cm, 3 * cm])
             tc_t.setStyle(TableStyle([
                 ("BACKGROUND",   (0, 0), (-1, 0), C_NAVY),
@@ -421,12 +526,12 @@ def generate_pdf_report(results, history_results=None, module_results=None,
             story.append(Spacer(1, 0.3 * cm))
 
         for change in feature_changes:
-            fname   = _safe(change.get("feature_name", "Unknown Feature"), 80)
+            fname   = _safe(change.get("feature_name", "Unknown Feature"), 120)
             status  = change.get("status", "")
             sev     = change.get("severity", "Medium")
-            impact  = _safe(change.get("impact", ""), 300)
-            rep     = _safe(change.get("replacement_logic", ""), 300)
-            remed   = _safe(change.get("remediation", ""), 400)
+            impact  = _safe(change.get("impact", ""), 600)
+            rep     = _safe(change.get("replacement_logic", ""), 600)
+            remed   = _safe(change.get("remediation", ""), 800)
             is_loss = "loss" in status.lower() or "missing" in status.lower()
 
             sev_clr = {"Critical": C_RED, "High": C_AMBER, "Medium": C_SLATE, "Low": C_GREEN}.get(sev, C_SLATE)
@@ -446,9 +551,9 @@ def generate_pdf_report(results, history_results=None, module_results=None,
             if rep:
                 rows.append([Paragraph("Replacement", st["small"]), Paragraph(rep, st["body"])])
             if remed:
-                rows.append([Paragraph("🤖 Fix", st["small"]), Paragraph(remed, st["remediation"])])
+                rows.append([Paragraph("Recommended Fix", st["small"]), Paragraph(remed, st["remediation"])])
 
-            ct = Table(rows, colWidths=[2.4 * cm, PAGE_W - 2.4 * cm])
+            ct = Table(rows, colWidths=[_LABEL_W, PAGE_W - _LABEL_W])
             ct.setStyle(TableStyle([
                 ("BACKGROUND",   (0, 0), (-1, 0), bg),
                 ("BACKGROUND",   (0, 1), (-1, -1), C_LIGHT),
@@ -518,27 +623,28 @@ def generate_pdf_report(results, history_results=None, module_results=None,
 
     # ── Recommendations summary ───────────────────────────────────────────────
     critical_list = [i for i in issues if any(
-        w in i.get("type", "").lower() for w in ["loss", "drift", "violation", "missing", "failed"]
+        w in i.get("type", "").lower() for w in
+        ["loss", "drift", "violation", "missing", "failed", "security", "error handling", "testing"]
     )]
     if critical_list:
         story.append(PageBreak())
         story.extend(_section("Top Recommendations", st, "🎯"))
         story.append(Paragraph(
-            "Address these critical items first to improve your compliance score:",
+            "Fix these issues first — they have the highest impact on quality and security:",
             st["body"]
         ))
         story.append(Spacer(1, 0.3 * cm))
 
         for rank, issue in enumerate(critical_list[:5], 1):
-            remed = _safe(issue.get("remediation", "No remediation provided."), 500)
-            itype = _safe(issue.get("type", ""), 50)
-            desc  = _safe(issue.get("description", ""), 200)
+            remed = _safe(issue.get("remediation", "No remediation provided."), 1000)
+            itype = _friendly_type(_safe(issue.get("type", ""), 60))
+            desc  = _safe(issue.get("description", ""), 300)
 
             rec_rows = [
                 [Paragraph(f"#{rank}", ParagraphStyle("RN", fontSize=14, fontName="Helvetica-Bold",
                                                        textColor=C_INDIGO, alignment=TA_CENTER)),
-                 Paragraph(f"<b>[{itype}]</b> {desc}", st["body"])],
-                [Paragraph("Action", st["small"]),
+                 Paragraph(f"<b>{itype}:</b> {desc}", st["body"])],
+                [Paragraph("What to do", st["small"]),
                  Paragraph(remed, st["remediation"])],
             ]
             rec_t = Table(rec_rows, colWidths=[1.2 * cm, PAGE_W - 1.2 * cm])
@@ -569,6 +675,6 @@ def generate_pdf_report(results, history_results=None, module_results=None,
                                    ("BOTTOMPADDING", (0,0), (-1,-1), 0)]))
     story.append(footer_t)
 
-    doc.build(story)
+    doc.build(story, onFirstPage=_add_page_number, onLaterPages=_add_page_number)
     buf.seek(0)
     return buf.getvalue()
