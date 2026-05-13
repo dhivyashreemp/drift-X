@@ -1,26 +1,63 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 
-function RiskBadge({ risk }) {
-  const styles = { High: 'text-red-400', Medium: 'text-amber-400', Low: 'text-green-400' }
-  const icons = { High: '🔴', Medium: '🟡', Low: '🟢' }
-  return (
-    <span className={`font-medium ${styles[risk] || 'text-slate-400'}`}>
-      {icons[risk] || '⚪'} {risk || 'Unknown'}
-    </span>
-  )
-}
-
 function ScoreBar({ score }) {
   const s = Math.min(100, Math.max(0, Number(score) || 0))
   const color = s >= 80 ? 'bg-green-500' : s >= 60 ? 'bg-amber-500' : 'bg-red-500'
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 bg-navy-800  h-1.5">
-        <div className={`${color} h-1.5  transition-all`} style={{ width: `${s}%` }} />
+      <div className="flex-1 bg-slate-200 h-1.5 rounded-full">
+        <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${s}%` }} />
       </div>
-      <span className="text-xs text-slate-400 w-10 text-right tabular-nums">{s.toFixed(1)}</span>
+      <span className="text-xs text-slate-500 w-8 text-right tabular-nums">{s.toFixed(0)}</span>
     </div>
+  )
+}
+
+function DownloadButton({ entry, repoUrl }) {
+  const { authFetch } = useAuth()
+  const [loading, setLoading] = useState(false)
+
+  const handleDownload = async () => {
+    setLoading(true)
+    try {
+      const res = await authFetch('/api/history/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo_url: repoUrl,
+          score: entry.score,
+          summary: entry.summary || '',
+          timestamp: entry.timestamp || '',
+          analysis_type: entry.type || 'Unified',
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `driftx_${(entry.timestamp || 'report').replace(/[: ]/g, '_')}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (_) {}
+    setLoading(false)
+  }
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={loading}
+      title="Download PDF report for this analysis"
+      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-300 bg-white text-slate-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-sm"
+    >
+      {loading ? (
+        <span className="animate-spin inline-block">⟳</span>
+      ) : (
+        <span>⬇</span>
+      )}
+      {loading ? 'Generating...' : 'PDF'}
+    </button>
   )
 }
 
@@ -58,82 +95,89 @@ export default function History({ repoUrl, historyResults }) {
   const criticalIssues = historyResults?.critical_issues_found ?? 0
   const deploymentRisk = historyResults?.deployment_risk ?? null
 
+  const riskCls = { High: 'text-red-600', Medium: 'text-amber-600', Low: 'text-green-600' }
+
   return (
     <div className="space-y-6">
+      {/* Git metadata stats */}
       {historyResults && !historyResults.error && (
         <div>
-          <p className="text-sm font-semibold text-slate-300 mb-3">📊 Git Metadata & Risk</p>
+          <p className="text-sm font-semibold text-slate-700 mb-3">Git Metadata &amp; Risk</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard label="Commits Analyzed" value={totalCommits} />
-            <StatCard label="Commits w/ Deletions" value={commitsWithDeletions} />
-            <StatCard label="Critical Issues" value={criticalIssues} />
-            <div className="bg-navy-800/60 border border-navy-700  p-4">
-              <p className="text-xs text-slate-500 mb-1 font-medium">Deployment Risk</p>
-              <RiskBadge risk={deploymentRisk} />
+            {[
+              { label: 'Commits Analyzed', value: totalCommits },
+              { label: 'Commits w/ Deletions', value: commitsWithDeletions },
+              { label: 'Critical Issues', value: criticalIssues },
+            ].map(s => (
+              <div key={s.label} className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm">
+                <p className="text-xs text-slate-500 font-medium">{s.label}</p>
+                <p className="text-xl font-bold text-slate-900 mt-1">{s.value}</p>
+              </div>
+            ))}
+            <div className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm">
+              <p className="text-xs text-slate-500 font-medium mb-1">Deployment Risk</p>
+              <p className={`font-semibold text-sm ${riskCls[deploymentRisk] || 'text-slate-400'}`}>
+                {deploymentRisk || 'Unknown'}
+              </p>
             </div>
           </div>
         </div>
       )}
 
+      {/* Past analyses */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-slate-300">🕰️ Past Analyses</p>
+          <p className="text-sm font-semibold text-slate-700">Past Analyses</p>
           {history.length > 0 && (
             <button
               onClick={clearHistory}
               disabled={clearing}
-              className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-40"
+              className="text-xs text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40"
             >
-              {clearing ? 'Clearing…' : '🗑️ Clear History'}
+              {clearing ? 'Clearing...' : 'Clear History'}
             </button>
           )}
         </div>
 
         {loading && (
-          <p className="text-sm text-slate-600 text-center py-8">Loading history…</p>
+          <p className="text-sm text-slate-400 text-center py-8">Loading history...</p>
         )}
 
         {!loading && history.length === 0 && (
-          <div className="text-center py-8 text-slate-600 border border-dashed border-navy-700 ">
+          <div className="text-center py-8 text-slate-400 border border-dashed border-slate-300 bg-white rounded-sm">
             No past analyses for this repository.
           </div>
         )}
 
         {!loading && history.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {history.map((entry, i) => (
-              <div key={i} className="bg-navy-900 border border-navy-700  p-4">
+              <div key={i} className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm hover:border-slate-300 transition-colors">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-slate-500">{entry.timestamp}</span>
-                      <span className="text-xs bg-navy-800 border border-navy-700 text-slate-400 px-2 py-0.5 ">{entry.type}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="text-xs text-slate-400 tabular-nums">{entry.timestamp}</span>
+                      <span className="text-xs bg-slate-100 border border-slate-200 text-slate-500 px-2 py-0.5 rounded-sm">{entry.type}</span>
                       {i === 0 && (
-                        <span className="text-xs bg-orange-900/40 text-orange-400 px-2 py-0.5  border border-orange-800/60">
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-sm border border-orange-300 font-semibold">
                           Latest
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-400 mt-1.5">{entry.summary}</p>
-                    <div className="mt-2 max-w-48">
+                    <p className="text-sm text-slate-600 leading-relaxed">{entry.summary}</p>
+                    <div className="mt-2 max-w-52">
                       <ScoreBar score={entry.score} />
                     </div>
                   </div>
+
+                  {/* Download button */}
+                  <DownloadButton entry={entry} repoUrl={repoUrl} />
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function StatCard({ label, value }) {
-  return (
-    <div className="bg-navy-800/60 border border-navy-700  p-4">
-      <p className="text-xs text-slate-500 font-medium">{label}</p>
-      <p className="text-xl font-bold text-white mt-1">{value}</p>
     </div>
   )
 }

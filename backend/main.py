@@ -466,6 +466,33 @@ def download_report(job_id: str, authorization: str = Header(default="")):
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
 
 
+class HistoryReportBody(BaseModel):
+    repo_url: str
+    score: float
+    summary: str
+    timestamp: str
+    analysis_type: str = "Unified"
+
+
+@app.post("/api/history/report")
+def history_entry_report(body: HistoryReportBody, authorization: str = Header(default="")):
+    _require_user(authorization)
+    try:
+        pdf_bytes = generate_pdf_report(
+            results={"score": body.score, "summary": body.summary, "issues": []},
+            repo_url=body.repo_url,
+            branch=body.analysis_type,
+        )
+        safe_ts = body.timestamp.replace(":", "-").replace(" ", "_")
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="driftx_{safe_ts}.pdf"'},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
+
+
 # ── Serve React frontend (must be mounted LAST) ───────────────────────────────
 
 _DIST = os.path.join(_ROOT_DIR, "frontend", "dist")
