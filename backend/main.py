@@ -472,25 +472,6 @@ def download_report(job_id: str, authorization: str = Header(default="")):
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
 
 
-@app.get("/api/history/entry/{entry_id}")
-def history_entry_json(entry_id: str, authorization: str = Header(default="")):
-    _require_user(authorization)
-    doc = get_analysis_full(entry_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Analysis entry not found")
-    doc.pop("_id", None)
-    return {
-        "full_results": doc.get("full_results"),
-        "history_results": doc.get("history_results"),
-        "module_results": doc.get("module_results"),
-        "repo_url": doc.get("repo_url", ""),
-        "timestamp": doc.get("timestamp", ""),
-        "type": doc.get("type", "Unified"),
-        "score": doc.get("score", 0),
-        "summary": doc.get("summary", ""),
-    }
-
-
 @app.get("/api/history/report/{entry_id}")
 def history_entry_report(entry_id: str, authorization: str = Header(default="")):
     _require_user(authorization)
