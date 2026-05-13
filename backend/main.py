@@ -25,7 +25,7 @@ load_dotenv(os.path.join(_ROOT_DIR, ".env"))
 from mcp_server.tools.git_reader import clone_repo, cleanup_repo
 from mcp_server.tools.commit_analyzer import CommitAnalyzer
 from agents.compliance_agent import ComplianceAgent
-from history_manager import save_analysis, get_repo_history, clear_repo_history
+from history_manager import save_analysis, get_repo_history, clear_repo_history, get_analysis_full
 from utils.pdf_report import generate_pdf_report
 from auth import create_token, verify_token, hash_password, verify_password
 from user_manager import get_user, email_exists, create_user, all_users, safe_user
@@ -331,7 +331,13 @@ def _run_job(
 
         final_score = results.get("score", 0)
         current_head = (history_results or {}).get("analysis_metadata", {}).get("head_commit")
-        save_analysis(combined_label, "Unified", final_score, results.get("summary", ""), last_commit_hash=current_head)
+        save_analysis(
+            combined_label, "Unified", final_score, results.get("summary", ""),
+            last_commit_hash=current_head,
+            full_results=results,
+            history_results=history_results,
+            module_results=module_results,
+        )
 
         if user_email:
             all_issues = results.get("issues", [])
@@ -466,24 +472,21 @@ def download_report(job_id: str, authorization: str = Header(default="")):
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
 
 
-class HistoryReportBody(BaseModel):
-    repo_url: str
-    score: float
-    summary: str
-    timestamp: str
-    analysis_type: str = "Unified"
-
-
-@app.post("/api/history/report")
-def history_entry_report(body: HistoryReportBody, authorization: str = Header(default="")):
+@app.get("/api/history/report/{entry_id}")
+def history_entry_report(entry_id: str, authorization: str = Header(default="")):
     _require_user(authorization)
+    doc = get_analysis_full(entry_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Analysis entry not found")
     try:
         pdf_bytes = generate_pdf_report(
-            results={"score": body.score, "summary": body.summary, "issues": []},
-            repo_url=body.repo_url,
-            branch=body.analysis_type,
+            results=doc.get("full_results") or {"score": doc.get("score", 0), "summary": doc.get("summary", ""), "issues": []},
+            history_results=doc.get("history_results"),
+            module_results=doc.get("module_results"),
+            repo_url=doc.get("repo_url", ""),
+            branch=doc.get("type", "Unified"),
         )
-        safe_ts = body.timestamp.replace(":", "-").replace(" ", "_")
+        safe_ts = (doc.get("timestamp") or "report").replace(":", "-").replace(" ", "_")
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",

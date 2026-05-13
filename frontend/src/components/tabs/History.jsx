@@ -19,19 +19,10 @@ function DownloadButton({ entry, repoUrl }) {
   const [loading, setLoading] = useState(false)
 
   const handleDownload = async () => {
+    if (!entry.id) return
     setLoading(true)
     try {
-      const res = await authFetch('/api/history/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo_url: repoUrl,
-          score: entry.score,
-          summary: entry.summary || '',
-          timestamp: entry.timestamp || '',
-          analysis_type: entry.type || 'Unified',
-        }),
-      })
+      const res = await authFetch(`/api/history/report/${entry.id}`)
       if (!res.ok) throw new Error('Failed')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)

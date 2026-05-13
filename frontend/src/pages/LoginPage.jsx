@@ -75,19 +75,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Left brand panel */}
-      <div className="hidden lg:flex w-80 bg-slate-800 flex-col justify-between p-10 shrink-0">
+      <div className="hidden lg:flex w-96 bg-slate-900 flex-col justify-between p-12 shrink-0 border-r border-slate-700/40">
         <div>
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-9 h-9 bg-orange-500 flex items-center justify-center rounded-sm">
-              <span className="text-white text-xs font-black">DX</span>
+          <div className="flex items-center gap-4 mb-14">
+            <div className="w-12 h-12 bg-orange-500 flex items-center justify-center rounded shadow-md">
+              <span className="text-white text-base font-black">DX</span>
             </div>
             <div>
-              <p className="text-white font-bold text-base">Drift-X</p>
-              <p className="text-orange-400/70 text-[9px] font-semibold tracking-widest uppercase">Quality Gateway</p>
+              <p className="text-white font-bold text-xl">Drift-X</p>
+              <p className="text-orange-400/80 text-[10px] font-bold tracking-[0.2em] uppercase mt-0.5">Quality Gateway</p>
             </div>
           </div>
-          <h1 className="text-xl font-bold text-white mb-2">AI-Powered Code Quality Gatekeeper</h1>
-          <p className="text-sm text-slate-400 mb-10">Catch requirement drift, security risks, and feature loss before they reach production.</p>
+          <h1 className="text-2xl font-bold text-white mb-3 leading-tight">AI-Powered Code Quality Gatekeeper</h1>
+          <p className="text-sm text-slate-400 mb-12 leading-relaxed">Catch requirement drift, security risks, and feature loss before they reach production.</p>
           <div className="space-y-5">
             {[
               { title: 'Requirement Drift Detection', desc: 'AI analysis against your spec documents' },

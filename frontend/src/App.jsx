@@ -162,24 +162,26 @@ function AnalysisView() {
       />
 
       <main className="flex-1 overflow-y-auto bg-slate-50">
-        <div className="p-6 max-w-5xl mx-auto">
+        <div className="p-6 max-w-6xl mx-auto">
           {analysisStatus === 'idle' && !analysisResult && (
-            <div className="flex flex-col items-center justify-center h-72 text-slate-400 border border-dashed border-slate-300 bg-white rounded-sm">
-              <div className="w-16 h-16 bg-orange-50 border border-orange-200 flex items-center justify-center mb-4 rounded-sm">
-                <span className="text-3xl">🛡️</span>
+            <div className="flex flex-col items-center justify-center h-80 text-slate-400 border border-dashed border-slate-300 bg-white rounded-sm shadow-sm">
+              <div className="w-20 h-20 bg-orange-50 border border-orange-200 flex items-center justify-center mb-5 rounded">
+                <span className="text-4xl">🛡️</span>
               </div>
-              <p className="text-base text-slate-600 font-medium">Configure repositories and run an analysis</p>
-              <p className="text-sm text-slate-400 mt-1">Add repo URLs and requirement docs to get started</p>
+              <p className="text-lg text-slate-700 font-semibold">Ready to analyse</p>
+              <p className="text-sm text-slate-400 mt-1.5 max-w-sm text-center">
+                Configure one or more repositories and upload requirement documents, then click <strong>Start Analysis</strong>.
+              </p>
             </div>
           )}
 
           {analysisStatus === 'running' && (
-            <div className="flex flex-col items-center justify-center h-72 bg-white border border-slate-200">
+            <div className="flex flex-col items-center justify-center h-80 bg-white border border-slate-200 rounded-sm shadow-sm">
               <div className="relative mb-6">
-                <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-orange-500" />
-                <div className="absolute inset-0 rounded-full h-14 w-14 border-2 border-slate-200" />
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500" />
+                <div className="absolute inset-0 rounded-full h-16 w-16 border-2 border-slate-100" />
               </div>
-              <p className="text-orange-600 text-base font-semibold">{progressMessage}</p>
+              <p className="text-orange-600 text-base font-bold">{progressMessage}</p>
               <p className="text-slate-400 text-sm mt-2">
                 Analysing {repoCount} repo{repoCount !== 1 ? 's' : ''} — this typically takes 2–5 minutes
               </p>
@@ -187,22 +189,22 @@ function AnalysisView() {
           )}
 
           {analysisStatus === 'error' && (
-            <div className={`border p-5 rounded-sm ${isPrivateRepoError ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
+            <div className={`border p-6 rounded-sm shadow-sm ${isPrivateRepoError ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
               {isPrivateRepoError ? (
                 <>
-                  <p className="text-amber-700 font-semibold text-base">Private Repository Access Denied</p>
-                  <p className="text-amber-600 text-sm mt-2">{progressMessage}</p>
-                  <p className="text-amber-500 text-xs mt-3">Add a GitHub token to the relevant repository card in the sidebar and retry.</p>
+                  <p className="text-amber-800 font-bold text-base">Private Repository Access Denied</p>
+                  <p className="text-amber-700 text-sm mt-2">{progressMessage}</p>
+                  <p className="text-amber-600 text-xs mt-3">Add a GitHub token to the relevant repository card in the sidebar and retry.</p>
                 </>
               ) : (
                 <>
-                  <p className="text-red-700 font-medium">Analysis failed</p>
-                  <p className="text-red-600 text-sm mt-1">{progressMessage}</p>
+                  <p className="text-red-800 font-bold text-base">Analysis Failed</p>
+                  <p className="text-red-700 text-sm mt-2">{progressMessage}</p>
                 </>
               )}
               <button
                 onClick={() => { setAnalysisStatus('idle'); setIsPrivateRepoError(false) }}
-                className="mt-4 text-sm text-slate-500 hover:text-slate-800 underline block"
+                className="mt-4 text-sm text-slate-600 hover:text-slate-900 underline block font-medium"
               >
                 Dismiss
               </button>
