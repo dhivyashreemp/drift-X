@@ -4,24 +4,24 @@ import { useAuth } from '../contexts/AuthContext'
 const REFRESH_MS = 15000
 
 function scoreColor(score) {
-  if (score == null) return 'text-slate-400'
-  if (score >= 80) return 'text-green-600'
-  if (score >= 60) return 'text-amber-600'
-  return 'text-red-600'
+  if (score == null) return 'text-zinc-500'
+  if (score >= 80) return 'text-green-400'
+  if (score >= 60) return 'text-amber-400'
+  return 'text-red-400'
 }
 
 function scoreBg(score) {
   if (score == null) return ''
-  if (score >= 80) return 'bg-green-50'
-  if (score >= 60) return 'bg-amber-50/50'
-  return 'bg-red-50/50'
+  if (score >= 80) return 'bg-green-950/20'
+  if (score >= 60) return 'bg-amber-950/20'
+  return 'bg-red-950/20'
 }
 
 function gateLabel(score) {
-  if (score == null) return { label: 'No data', cls: 'text-slate-500 bg-slate-100 border-slate-300' }
-  if (score >= 80) return { label: 'Pass', cls: 'text-green-700 bg-green-100 border-green-300' }
-  if (score >= 60) return { label: 'Warning', cls: 'text-amber-700 bg-amber-100 border-amber-300' }
-  return { label: 'Fail', cls: 'text-red-700 bg-red-100 border-red-300' }
+  if (score == null) return { label: 'No data', cls: 'text-zinc-500 bg-zinc-800 border-zinc-600' }
+  if (score >= 80) return { label: 'Pass', cls: 'text-green-400 bg-green-950/40 border-green-700/50' }
+  if (score >= 60) return { label: 'Warning', cls: 'text-amber-400 bg-amber-950/40 border-amber-700/50' }
+  return { label: 'Fail', cls: 'text-red-400 bg-red-950/40 border-red-700/50' }
 }
 
 function timeSince(ts) {
@@ -40,7 +40,7 @@ function MiniBar({ score }) {
   const color = s >= 80 ? 'bg-green-500' : s >= 60 ? 'bg-amber-500' : 'bg-red-500'
   return (
     <div className="flex items-center gap-1.5">
-      <div className="w-20 bg-slate-200 h-2 rounded-full">
+      <div className="w-20 bg-zinc-700 h-2 rounded-full">
         <div className={`${color} h-2 rounded-full`} style={{ width: `${s}%` }} />
       </div>
     </div>
@@ -48,11 +48,11 @@ function MiniBar({ score }) {
 }
 
 function Trend({ trend, prev, current }) {
-  if (!trend || trend === 'flat') return <span className="text-slate-400 text-xs">-</span>
+  if (!trend || trend === 'flat') return <span className="text-zinc-500 text-xs">-</span>
   const up = trend === 'up'
   const diff = current != null && prev != null ? Math.abs(Math.round(current - prev)) : null
   return (
-    <span className={`text-xs font-bold ${up ? 'text-green-600' : 'text-red-600'}`}>
+    <span className={`text-xs font-bold ${up ? 'text-green-400' : 'text-red-400'}`}>
       {up ? '↑' : '↓'} {diff != null ? diff : ''}
     </span>
   )
@@ -73,29 +73,29 @@ function HistoryDrawer({ email, onClose }) {
 
   return (
     <tr>
-      <td colSpan={10} className="bg-slate-50 border-t border-b border-orange-200 px-0 py-0">
+      <td colSpan={10} className="bg-zinc-800/50 border-t border-b border-zinc-700 px-0 py-0">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+            <p className="text-xs font-semibold text-neon-500 uppercase tracking-wide">
               Analysis History — {email}
             </p>
-            <button onClick={onClose} className="text-xs text-slate-400 hover:text-slate-800">Close</button>
+            <button onClick={onClose} className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors">Close</button>
           </div>
 
-          {loading && <p className="text-xs text-slate-400">Loading...</p>}
+          {loading && <p className="text-xs text-zinc-500">Loading...</p>}
 
           {!loading && (!history || history.length === 0) && (
-            <p className="text-xs text-slate-400">No analyses recorded yet.</p>
+            <p className="text-xs text-zinc-500">No analyses recorded yet.</p>
           )}
 
           {!loading && history && history.length > 0 && (
             <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
               {history.map((h, i) => (
-                <div key={i} className="bg-white border border-slate-200 p-3 hover:border-slate-300 transition-colors rounded-sm">
+                <div key={i} className="bg-zinc-800 border border-zinc-700 p-3 hover:border-zinc-600 transition-colors rounded-sm">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-xs text-slate-400 tabular-nums whitespace-nowrap">{h.timestamp}</span>
-                      <span className="text-xs text-slate-700 font-medium">
+                      <span className="text-xs text-zinc-500 tabular-nums whitespace-nowrap">{h.timestamp}</span>
+                      <span className="text-xs text-zinc-300 font-medium">
                         {(h.repo_url || '').replace('https://github.com/', '').replace('https://', '')}
                       </span>
                     </div>
@@ -105,19 +105,19 @@ function HistoryDrawer({ email, onClose }) {
                         <MiniBar score={h.score} />
                       </div>
                       {h.issue_count > 0 && (
-                        <span className="text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-sm">
+                        <span className="text-xs text-zinc-500 bg-zinc-700 border border-zinc-600 px-2 py-0.5 rounded-sm">
                           {h.issue_count} issues
                         </span>
                       )}
                       {h.critical_count > 0 && (
-                        <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-sm font-semibold">
+                        <span className="text-xs text-red-400 bg-red-950/40 border border-red-700/50 px-2 py-0.5 rounded-sm font-semibold">
                           {h.critical_count} critical
                         </span>
                       )}
                     </div>
                   </div>
                   {h.summary && (
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed border-t border-slate-100 pt-2">
+                    <p className="text-xs text-zinc-500 mt-2 leading-relaxed border-t border-zinc-700 pt-2">
                       {h.summary}
                     </p>
                   )}
@@ -196,11 +196,11 @@ export default function TeamDashboard() {
 
   const SortTh = ({ col, label }) => (
     <th
-      className="text-left py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-800 select-none whitespace-nowrap"
+      className="text-left py-3 pr-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide cursor-pointer hover:text-zinc-200 select-none whitespace-nowrap transition-colors"
       onClick={() => handleSort(col)}
     >
       {label}
-      {sortKey === col && <span className="ml-1 text-orange-500">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+      {sortKey === col && <span className="ml-1 text-neon-500">{sortDir === 'asc' ? '↑' : '↓'}</span>}
     </th>
   )
 
@@ -210,28 +210,28 @@ export default function TeamDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">Team Compliance Dashboard</h1>
+            <h1 className="text-2xl font-bold text-zinc-100">Team Compliance Dashboard</h1>
             {isManager && (
-              <span className="text-xs bg-amber-100 text-amber-700 border border-amber-300 px-2 py-1 uppercase tracking-wide font-semibold rounded-sm">
+              <span className="text-xs bg-amber-950/40 text-amber-400 border border-amber-700/50 px-2 py-1 uppercase tracking-wide font-semibold rounded-sm">
                 Manager View
               </span>
             )}
           </div>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-zinc-500 text-sm mt-1">
             {team.length} developer{team.length !== 1 ? 's' : ''} · {stats.weeklyRuns} analyses this week
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-green-500 animate-pulse inline-block rounded-full" />
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-zinc-500">
               Live · refreshes every 15s
               {lastRefresh && ` · updated ${timeSince(lastRefresh.toISOString())}`}
             </span>
           </div>
           <button
             onClick={fetchTeam}
-            className="text-xs text-orange-600 hover:text-orange-700 border border-orange-300 bg-orange-50 hover:bg-orange-100 px-2.5 py-1 transition-colors rounded-sm"
+            className="text-xs text-neon-500 hover:text-neon-400 border border-neon-500/40 bg-neon-500/10 hover:bg-neon-500/20 px-2.5 py-1 transition-colors rounded-sm"
           >
             Refresh
           </button>
@@ -241,23 +241,23 @@ export default function TeamDashboard() {
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
         <StatCard label="Total Devs" value={stats.total} />
-        <StatCard label="Compliant" value={stats.compliant} color="text-green-600" />
-        <StatCard label="At Risk" value={stats.atRisk} color={stats.atRisk > 0 ? 'text-red-600' : 'text-slate-400'} />
+        <StatCard label="Compliant" value={stats.compliant} color="text-green-400" />
+        <StatCard label="At Risk" value={stats.atRisk} color={stats.atRisk > 0 ? 'text-red-400' : 'text-zinc-500'} />
         <StatCard label="Avg Score" value={analyzed.length ? `${stats.avgScore}` : '-'} />
-        <StatCard label="Active Today" value={stats.activeToday} color="text-orange-600" />
-        <StatCard label="This Week" value={stats.weeklyRuns} color="text-orange-600" />
-        <StatCard label="Never Run" value={stats.neverAnalyzed} color={stats.neverAnalyzed > 0 ? 'text-amber-600' : 'text-slate-400'} />
+        <StatCard label="Active Today" value={stats.activeToday} color="text-neon-500" />
+        <StatCard label="This Week" value={stats.weeklyRuns} color="text-neon-500" />
+        <StatCard label="Never Run" value={stats.neverAnalyzed} color={stats.neverAnalyzed > 0 ? 'text-amber-400' : 'text-zinc-500'} />
       </div>
 
       {/* At-risk alert */}
       {isManager && stats.atRisk > 0 && (
-        <div className="mb-5 bg-red-50 border border-red-300 p-4 rounded-sm">
-          <p className="text-sm font-semibold text-red-700 mb-2">
+        <div className="mb-5 bg-red-950/30 border border-red-700/50 p-4 rounded-sm">
+          <p className="text-sm font-semibold text-red-400 mb-2">
             {stats.atRisk} developer{stats.atRisk !== 1 ? 's' : ''} below compliance threshold — action required
           </p>
           <div className="flex flex-wrap gap-2">
             {analyzed.filter(d => (d.latest_score || 0) < 60).map(d => (
-              <span key={d.email} className="text-xs bg-red-100 border border-red-300 px-3 py-1 text-red-700 rounded-sm">
+              <span key={d.email} className="text-xs bg-red-950/40 border border-red-700/50 px-3 py-1 text-red-400 rounded-sm">
                 {d.name} — <strong>{Math.round(d.latest_score)}/100</strong>
                 {d.last_critical_count > 0 && <> · {d.last_critical_count} critical</>}
               </span>
@@ -280,8 +280,8 @@ export default function TeamDashboard() {
             onClick={() => setFilter(tab.key)}
             className={`px-3 py-1 text-xs border transition-colors uppercase tracking-wide font-medium rounded-sm ${
               filter === tab.key
-                ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
-                : 'bg-white border-slate-300 text-slate-500 hover:text-slate-800 hover:border-slate-400'
+                ? 'bg-neon-500 border-neon-500 text-zinc-900 shadow-sm'
+                : 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:text-zinc-200 hover:border-zinc-500'
             }`}
           >
             {tab.label}
@@ -291,32 +291,32 @@ export default function TeamDashboard() {
 
       {/* Table */}
       {loading && (
-        <div className="text-center py-16 text-slate-400">Loading team data...</div>
+        <div className="text-center py-16 text-zinc-500">Loading team data...</div>
       )}
 
       {!loading && sorted.length === 0 && (
-        <div className="text-center py-16 border border-dashed border-slate-300 text-slate-400 bg-white rounded-sm">
+        <div className="text-center py-16 border border-dashed border-zinc-700 text-zinc-500 bg-zinc-900 rounded-sm">
           <p className="text-4xl mb-3">👥</p>
           <p>No developers match this filter.</p>
         </div>
       )}
 
       {!loading && sorted.length > 0 && (
-        <div className="bg-white border border-slate-200 overflow-hidden rounded-sm shadow-sm">
+        <div className="bg-zinc-900 border border-zinc-700 overflow-hidden rounded-sm shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-slate-200 bg-slate-50">
+              <thead className="border-b border-zinc-700 bg-zinc-800/50">
                 <tr>
                   <SortTh col="name" label="Developer" />
                   <SortTh col="latest_score" label="Score" />
-                  <th className="text-left py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Bar</th>
-                  <th className="text-left py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Gate</th>
-                  <th className="text-left py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trend</th>
+                  <th className="text-left py-3 pr-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Bar</th>
+                  <th className="text-left py-3 pr-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Gate</th>
+                  <th className="text-left py-3 pr-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Trend</th>
                   <SortTh col="last_issue_count" label="Issues" />
                   <SortTh col="last_critical_count" label="Critical" />
-                  <th className="text-left py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Today</th>
+                  <th className="text-left py-3 pr-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Today</th>
                   <SortTh col="analyses_count" label="Total Runs" />
-                  <th className="text-left py-3 pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Last Active</th>
+                  <th className="text-left py-3 pr-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Last Active</th>
                   {isManager && <th className="py-3 pr-4" />}
                 </tr>
               </thead>
@@ -332,24 +332,26 @@ export default function TeamDashboard() {
                     <>
                       <tr
                         key={dev.email}
-                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                          isMe ? 'bg-orange-50/60' : scoreBg(dev.latest_score)
+                        className={`border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors ${
+                          isMe ? 'bg-neon-500/5' : scoreBg(dev.latest_score)
                         }`}
                       >
                         <td className="py-3 pr-4 pl-4">
                           <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 flex items-center justify-center text-white text-xs font-bold uppercase shrink-0 rounded-sm ${
-                              dev.analyses_count === 0 ? 'bg-slate-400' : 'bg-indigo-600'
+                            <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold uppercase shrink-0 rounded-sm ${
+                              dev.analyses_count === 0
+                                ? 'bg-zinc-600 text-zinc-300'
+                                : 'bg-neon-500/20 text-neon-500'
                             }`}>
                               {dev.name?.[0] || '?'}
                             </div>
                             <div>
                               <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium text-slate-900">{dev.name}</p>
-                                {isMe && <span className="text-xs text-orange-600 bg-orange-100 border border-orange-300 px-1.5 rounded-sm">you</span>}
-                                {dev.analyses_count === 0 && <span className="text-xs text-slate-400 bg-slate-100 px-1.5 border border-slate-200 rounded-sm">new</span>}
+                                <p className="text-sm font-medium text-zinc-100">{dev.name}</p>
+                                {isMe && <span className="text-xs text-neon-500 bg-neon-500/10 border border-neon-500/30 px-1.5 rounded-sm">you</span>}
+                                {dev.analyses_count === 0 && <span className="text-xs text-zinc-500 bg-zinc-700 px-1.5 border border-zinc-600 rounded-sm">new</span>}
                               </div>
-                              <p className="text-xs text-slate-400">{dev.email}</p>
+                              <p className="text-xs text-zinc-500">{dev.email}</p>
                             </div>
                           </div>
                         </td>
@@ -358,11 +360,11 @@ export default function TeamDashboard() {
                           <span className={`text-lg font-bold ${scoreColor(dev.latest_score)}`}>
                             {dev.latest_score != null ? Math.round(dev.latest_score) : '-'}
                           </span>
-                          {dev.latest_score != null && <span className="text-xs text-slate-400">/100</span>}
+                          {dev.latest_score != null && <span className="text-xs text-zinc-500">/100</span>}
                         </td>
 
                         <td className="py-3 pr-4">
-                          {dev.latest_score != null ? <MiniBar score={dev.latest_score} /> : <span className="text-xs text-slate-300">-</span>}
+                          {dev.latest_score != null ? <MiniBar score={dev.latest_score} /> : <span className="text-xs text-zinc-600">-</span>}
                         </td>
 
                         <td className="py-3 pr-4">
@@ -373,27 +375,27 @@ export default function TeamDashboard() {
                           <Trend trend={dev.score_trend} prev={dev.prev_score} current={dev.latest_score} />
                         </td>
 
-                        <td className="py-3 pr-4 tabular-nums text-sm text-slate-600">
-                          {dev.last_issue_count > 0 ? dev.last_issue_count : <span className="text-slate-300">-</span>}
+                        <td className="py-3 pr-4 tabular-nums text-sm text-zinc-400">
+                          {dev.last_issue_count > 0 ? dev.last_issue_count : <span className="text-zinc-600">-</span>}
                         </td>
 
                         <td className="py-3 pr-4 tabular-nums text-sm">
                           {dev.last_critical_count > 0
-                            ? <span className="text-red-600 font-semibold">{dev.last_critical_count}</span>
-                            : <span className="text-slate-300">-</span>}
+                            ? <span className="text-red-400 font-semibold">{dev.last_critical_count}</span>
+                            : <span className="text-zinc-600">-</span>}
                         </td>
 
                         <td className="py-3 pr-4">
                           {todayRuns > 0
-                            ? <span className="text-xs text-orange-700 bg-orange-100 border border-orange-300 px-2 py-0.5 rounded-sm">{todayRuns} today</span>
-                            : <span className="text-xs text-slate-300">idle</span>}
+                            ? <span className="text-xs text-neon-500 bg-neon-500/10 border border-neon-500/30 px-2 py-0.5 rounded-sm">{todayRuns} today</span>
+                            : <span className="text-xs text-zinc-600">idle</span>}
                         </td>
 
-                        <td className="py-3 pr-4 tabular-nums text-sm text-slate-500">
-                          {dev.analyses_count > 0 ? dev.analyses_count : <span className="text-slate-300">0</span>}
+                        <td className="py-3 pr-4 tabular-nums text-sm text-zinc-500">
+                          {dev.analyses_count > 0 ? dev.analyses_count : <span className="text-zinc-600">0</span>}
                         </td>
 
-                        <td className="py-3 pr-4 text-xs text-slate-400 whitespace-nowrap tabular-nums">
+                        <td className="py-3 pr-4 text-xs text-zinc-500 whitespace-nowrap tabular-nums">
                           {timeSince(dev.last_active)}
                         </td>
 
@@ -401,7 +403,7 @@ export default function TeamDashboard() {
                           <td className="py-3 pr-4">
                             <button
                               onClick={() => setExpandedEmail(isExpanded ? null : dev.email)}
-                              className="text-xs text-slate-400 hover:text-orange-600 transition-colors whitespace-nowrap"
+                              className="text-xs text-zinc-500 hover:text-neon-500 transition-colors whitespace-nowrap"
                             >
                               {isExpanded ? 'hide' : 'history'}
                             </button>
@@ -429,10 +431,10 @@ export default function TeamDashboard() {
   )
 }
 
-function StatCard({ label, value, color = 'text-slate-900' }) {
+function StatCard({ label, value, color = 'text-zinc-100' }) {
   return (
-    <div className="bg-white border border-slate-200 p-3 rounded-sm shadow-sm">
-      <p className="text-xs text-slate-500 mb-1">{label}</p>
+    <div className="bg-zinc-800 border border-zinc-700 p-3 rounded-sm shadow-sm">
+      <p className="text-xs text-zinc-500 mb-1">{label}</p>
       <p className={`text-xl font-bold ${color}`}>{value}</p>
     </div>
   )
