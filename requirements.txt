@@ -2,9 +2,7 @@ pymongo[srv]
 json-repair
 dnspython
 PyPDF2
-langchain-aws
 boto3
-langchain
 langchain-core
 python-dotenv
 radon

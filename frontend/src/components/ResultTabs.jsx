@@ -4,12 +4,23 @@ import Issues from './tabs/Issues'
 import FeatureEvolution from './tabs/FeatureEvolution'
 import ModuleAnalysis from './tabs/ModuleAnalysis'
 import History from './tabs/History'
+import CodeIssues from './tabs/CodeIssues'
 
-export default function ResultTabs({ results, historyResults, moduleResults, repoUrl, jobId, onDownloadPDF }) {
+export default function ResultTabs({ results, historyResults, moduleResults, codeLevelResults, repoUrl, jobId, onDownloadPDF, pdfDownloading, pdfError }) {
+  // Only count actual problems — exclude replacements/refactors/preserved changes
+  const evolutionCount = (historyResults?.feature_changes ?? []).filter(c =>
+    !['replacement', 'refactor', 'updated', 'preserved'].some(w =>
+      (c.status || '').toLowerCase().includes(w)
+    )
+  ).length
+
+  const codeLevelCount = codeLevelResults?.total_static_issues || 0
+
   const tabs = [
     { id: 'quality', label: 'Quality Report', icon: '📊' },
     { id: 'issues', label: 'Issues', icon: '⚡', badge: results?.issues?.length },
-    { id: 'evolution', label: 'Feature Evolution', icon: '📈' },
+    { id: 'evolution', label: 'Feature Evolution', icon: '📈', badge: evolutionCount },
+    { id: 'code', label: 'Code Level Issues', icon: '🔬', badge: codeLevelCount },
     ...(moduleResults ? [{ id: 'module', label: 'Module', icon: '🧩' }] : []),
     { id: 'history', label: 'History', icon: '🕒' },
   ]
@@ -48,25 +59,37 @@ export default function ResultTabs({ results, historyResults, moduleResults, rep
         {active === 'quality' && <QualityReport results={results} historyResults={historyResults} />}
         {active === 'issues' && <Issues issues={results?.issues || []} />}
         {active === 'evolution' && <FeatureEvolution historyResults={historyResults} />}
+        {active === 'code' && <CodeIssues codeLevelResults={codeLevelResults} />}
         {active === 'module' && moduleResults && <ModuleAnalysis moduleResults={moduleResults} />}
         {active === 'history' && <History repoUrl={repoUrl} historyResults={historyResults} />}
       </div>
 
       {/* Footer bar */}
       <div className="bg-slate-50 border border-slate-200 border-t-0 rounded-b-sm px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
           <p className="text-sm text-slate-600 font-medium">Analysis complete</p>
           <div className="h-4 w-px bg-slate-300" />
           <p className="text-xs text-slate-400">
             Job ID: <code className="text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded">{jobId?.slice(0, 8)}</code>
           </p>
+          {pdfError && (
+            <p className="text-xs text-red-600 font-medium truncate max-w-xs">PDF error: {pdfError}</p>
+          )}
         </div>
         <button
           onClick={onDownloadPDF}
-          className="flex items-center gap-2.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-bold transition-colors uppercase tracking-widest rounded-sm shadow-sm"
+          disabled={pdfDownloading}
+          className="flex items-center gap-2.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors uppercase tracking-widest rounded-sm shadow-sm shrink-0"
         >
-          Download PDF Report
+          {pdfDownloading ? (
+            <>
+              <span className="animate-spin inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+              Generating...
+            </>
+          ) : (
+            'Download PDF Report'
+          )}
         </button>
       </div>
     </div>

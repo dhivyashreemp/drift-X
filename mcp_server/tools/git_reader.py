@@ -101,3 +101,18 @@ def cleanup_repo(path):
     if os.path.exists(path):
         # On Windows, git files are often read-only. We need a handler.
         shutil.rmtree(path, onerror=on_rm_error)
+
+
+def pull_repo(path: str) -> bool:
+    """
+    Fast-forward pull an already-cloned repo to pick up new commits.
+    Returns True on success, False on failure.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", path, "pull", "--ff-only"],
+            capture_output=True, text=True, timeout=30,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False

@@ -25,7 +25,9 @@ load_dotenv(os.path.join(_ROOT_DIR, ".env"))
 from mcp_server.tools.git_reader import clone_repo, cleanup_repo
 from mcp_server.tools.commit_analyzer import CommitAnalyzer
 from agents.compliance_agent import ComplianceAgent
+from utils.static_analyzer import analyze_repos
 from history_manager import save_analysis, get_repo_history, clear_repo_history, get_analysis_full
+from db import jobs_col
 from utils.pdf_report import generate_pdf_report
 from auth import create_token, verify_token, hash_password, verify_password
 from user_manager import get_user, email_exists, create_user, all_users, safe_user
@@ -46,9 +48,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.options("/{rest:path}")
+def preflight(rest: str):
+    return Response(status_code=204)
+
 _repo_cache: dict = {}
-_jobs: dict = {}
 _results_cache: dict = {}
+
+
+def _job_set(job_id: str, data: dict):
+    jobs_col().replace_one(
+        {"job_id": job_id},
+        {"job_id": job_id, "created_at": datetime.utcnow(), **data},
+        upsert=True,
+    )
+
+
+def _job_update(job_id: str, patch: dict):
+    jobs_col().update_one({"job_id": job_id}, {"$set": patch})
+
+
+def _job_get(job_id: str) -> dict | None:
+    doc = jobs_col().find_one({"job_id": job_id}, {"_id": 0, "job_id": 0, "created_at": 0})
+    return doc
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -257,7 +280,7 @@ async def fetch_repo(
         repo_path = clone_repo(repo_url.strip(), branch=branch_val, token=token_val)
         _repo_cache[cache_key] = repo_path
         analyzer = CommitAnalyzer(repo_path)
-        commits = analyzer.get_commit_history(max_commits=100)
+        commits = analyzer.get_commit_history()
         return {"success": True, "commits": commits, "count": len(commits)}
     except Exception as exc:
         detail = str(exc)
@@ -278,7 +301,7 @@ def _run_job(
     user_name: str,
 ):
     try:
-        _jobs[job_id].update(status="running", progress="Preparing repositories…")
+        _job_update(job_id, {"status": "running", "progress": "Preparing repositories…"})
 
         # Clone each repo and build (path, label) pairs
         repo_entries = []
@@ -300,10 +323,10 @@ def _run_job(
         repo_paths_labeled = [(e["path"], e["url"]) for e in repo_entries]
         combined_label = " + ".join(e["url"] for e in repo_entries)
 
-        _jobs[job_id]["progress"] = "Running unified quality analysis…"
+        _job_update(job_id, {"progress": "Running unified quality analysis…"})
         results = agent.unified_analysis(repo_paths_labeled, requirements_text, dos_donts_text)
 
-        _jobs[job_id]["progress"] = "Analyzing feature evolution…"
+        _job_update(job_id, {"progress": "Analyzing feature evolution…"})
         history_entries = [(e["path"], e["base_commit"], e["head_commit"]) for e in repo_entries]
         history_results = agent.analyze_feature_loss_with_history(
             history_entries, requirements_text, dos_donts_text,
@@ -316,18 +339,42 @@ def _run_job(
                     issues.append({
                         "type": "Critical Feature Loss",
                         "description": f"Evolution: missing — {change.get('feature_name')}",
-                        "evidence": change.get("evidence", ""),
-                        "reasoning": change.get("reasoning", ""),
-                        "remediation": change.get("remediation", ""),
+                        "evidence": change.get("evidence") or "See commit history for deletion details.",
+                        "reasoning": change.get("reasoning") or change.get("impact") or "This feature was removed without a replacement.",
+                        "remediation": change.get("remediation") or f"Restore the '{change.get('feature_name')}' feature. Review the commit that deleted it and re-implement the original logic.",
                     })
             results["issues"] = issues
 
+        # Ensure every issue has all required fields
+        for issue in results.get("issues", []):
+            issue.setdefault("evidence", "No specific location identified.")
+            issue.setdefault("reasoning", "No additional reasoning provided.")
+            issue.setdefault("remediation", "Re-run the analysis for detailed remediation steps.")
+
         module_results = None
         if module_name:
-            _jobs[job_id]["progress"] = f"Analysing module '{module_name}'…"
+            _job_update(job_id, {"progress": f"Analysing module '{module_name}'…"})
             module_results = agent.analyze_module_focus(
                 repo_paths_labeled, module_name, requirements_text, dos_donts_text,
             )
+
+        _job_update(job_id, {"progress": "Running static code analysis…"})
+        static_results = analyze_repos(repo_paths_labeled)
+
+        _job_update(job_id, {"progress": "Running LLM code structure analysis…"})
+        llm_code_results = agent.analyze_code_structure(repo_paths_labeled)
+
+        code_level_results = {
+            "total_static_issues": static_results.get("total_issues", 0),
+            "by_category": static_results.get("by_category", {}),
+            "by_file": static_results.get("by_file", {}),
+            "llm_auth_issues": llm_code_results.get("auth_issues", []),
+            "llm_pipeline_issues": llm_code_results.get("pipeline_issues", []),
+            "llm_dependency_issues": llm_code_results.get("dependency_issues", []),
+            "llm_error_handling_issues": llm_code_results.get("error_handling_issues", []),
+            "llm_observability_issues": llm_code_results.get("observability_issues", []),
+            "summary": llm_code_results.get("summary", ""),
+        }
 
         final_score = results.get("score", 0)
         current_head = (history_results or {}).get("analysis_metadata", {}).get("head_commit")
@@ -337,6 +384,7 @@ def _run_job(
             full_results=results,
             history_results=history_results,
             module_results=module_results,
+            code_level_results=code_level_results,
         )
 
         if user_email:
@@ -356,30 +404,32 @@ def _run_job(
             results=results,
             history_results=history_results,
             module_results=module_results,
+            code_level_results=code_level_results,
             repo_url=combined_label,
             branch=", ".join(r.get("branch") or "default" for r in repos),
             module_name=module_name,
         )
 
-        _jobs[job_id] = {
+        _job_set(job_id, {
             "status": "complete",
             "progress": "Analysis complete.",
             "result": {
                 "results": results,
                 "history_results": history_results,
                 "module_results": module_results,
+                "code_level_results": code_level_results,
             },
-        }
+        })
     except Exception as exc:
         err_str = str(exc)
         is_private = err_str.startswith("PRIVATE_REPO:")
         clean = err_str.replace("PRIVATE_REPO: ", "") if is_private else err_str
-        _jobs[job_id] = {
+        _job_set(job_id, {
             "status": "error",
             "progress": clean,
             "error": clean,
             "private_repo": is_private,
-        }
+        })
 
 
 @app.post("/api/analyze")
@@ -414,7 +464,7 @@ async def start_analysis(
         dos_text += f"\n\n--- {f.filename} ---\n{_extract_text(data, f.filename)}"
 
     job_id = str(uuid.uuid4())
-    _jobs[job_id] = {"status": "pending", "progress": "Queued…"}
+    _job_set(job_id, {"status": "pending", "progress": "Queued…"})
 
     threading.Thread(
         target=_run_job,
@@ -436,7 +486,7 @@ async def start_analysis(
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str, authorization: str = Header(default="")):
     _require_user(authorization)
-    job = _jobs.get(job_id)
+    job = _job_get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job

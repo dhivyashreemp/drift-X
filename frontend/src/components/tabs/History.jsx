@@ -81,8 +81,8 @@ export default function History({ repoUrl, historyResults }) {
   }
 
   const meta = historyResults?.analysis_metadata ?? {}
-  const totalCommits = historyResults?.total_commits_analyzed ?? meta.total_commits ?? 0
-  const commitsWithDeletions = historyResults?.commits_with_deletions ?? 0
+  const totalCommits = meta.total_commits ?? historyResults?.total_commits_analyzed ?? 0
+  const commitsWithDeletions = historyResults?.commits_with_deletions ?? meta.commits_with_deletions ?? 0
   const criticalIssues = historyResults?.critical_issues_found ?? 0
   const deploymentRisk = historyResults?.deployment_risk ?? null
 

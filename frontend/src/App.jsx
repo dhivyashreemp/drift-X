@@ -34,6 +34,8 @@ function AnalysisView() {
   const [progressMessage, setProgressMessage] = useState('')
   const [analysisResult, setAnalysisResult] = useState(null)
   const [isPrivateRepoError, setIsPrivateRepoError] = useState(false)
+  const [pdfDownloading, setPdfDownloading] = useState(false)
+  const [pdfError, setPdfError] = useState('')
   const pollRef = useRef(null)
 
   const updateRepo = (id, patch) =>
@@ -73,6 +75,12 @@ function AnalysisView() {
     pollRef.current = setInterval(async () => {
       try {
         const res = await authFetch(`/api/jobs/${id}`)
+        if (res.status === 404) {
+          clearInterval(pollRef.current)
+          setAnalysisStatus('error')
+          setProgressMessage('Job not found — the server may have restarted. Please run the analysis again.')
+          return
+        }
         const job = await res.json()
         setProgressMessage(job.progress || '')
         if (job.status === 'complete') {
@@ -126,16 +134,29 @@ function AnalysisView() {
   }
 
   const handleDownloadPDF = async () => {
-    if (!jobId) return
-    const res = await authFetch(`/api/report/${jobId}`, { method: 'POST' })
-    if (res.ok) {
+    if (!jobId || pdfDownloading) return
+    setPdfDownloading(true)
+    setPdfError('')
+    try {
+      const res = await authFetch(`/api/report/${jobId}`, { method: 'POST' })
+      if (!res.ok) {
+        let detail = `Server error ${res.status}`
+        try { const j = await res.json(); detail = j.detail || detail } catch (_) {}
+        throw new Error(detail)
+      }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = `driftx_report_${Date.now()}.pdf`
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
+    } catch (e) {
+      setPdfError(e.message)
+    } finally {
+      setPdfDownloading(false)
     }
   }
 
@@ -216,9 +237,12 @@ function AnalysisView() {
               results={analysisResult.results}
               historyResults={analysisResult.history_results}
               moduleResults={analysisResult.module_results}
+              codeLevelResults={analysisResult.code_level_results}
               repoUrl={repos.filter(r => r.url.trim()).map(r => r.url.trim()).join(' + ')}
               jobId={jobId}
               onDownloadPDF={handleDownloadPDF}
+              pdfDownloading={pdfDownloading}
+              pdfError={pdfError}
             />
           )}
         </div>

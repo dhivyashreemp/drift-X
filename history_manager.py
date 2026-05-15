@@ -5,7 +5,8 @@ from db import repo_history_col
 
 def save_analysis(repo_url, analysis_type, score, summary,
                   last_commit_hash=None, full_results=None,
-                  history_results=None, module_results=None):
+                  history_results=None, module_results=None,
+                  code_level_results=None):
     col = repo_history_col()
     entry = {
         "repo_url": repo_url,
@@ -17,6 +18,7 @@ def save_analysis(repo_url, analysis_type, score, summary,
         "full_results": full_results or {"score": score, "summary": summary, "issues": []},
         "history_results": history_results,
         "module_results": module_results,
+        "code_level_results": code_level_results,
     }
     result = col.insert_one(entry)
 

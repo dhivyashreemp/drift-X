@@ -36,3 +36,10 @@ def repo_history_col() -> Collection:
     col = get_db()["repo_history"]
     col.create_index([("repo_url", ASCENDING), ("timestamp", DESCENDING)])
     return col
+
+
+def jobs_col() -> Collection:
+    col = get_db()["jobs"]
+    col.create_index("job_id", unique=True)
+    col.create_index("created_at", expireAfterSeconds=86400)  # auto-delete after 24h
+    return col
