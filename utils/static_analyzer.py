@@ -319,6 +319,42 @@ def _deduplicate(issues):
     return result
 
 
+def calculate_scores(by_category):
+    """
+    Calculate 0-100 scores per category and an overall code_level_score.
+    Rubric (start at 100): Critical -15 (cap 45), High -8 (cap 24), Medium -3 (cap 12), Low -1 (cap 5).
+    Overall = weighted average across categories by risk importance.
+    """
+    DEDUCTIONS = {'Critical': 15, 'High': 8, 'Medium': 3, 'Low': 1}
+    CAPS       = {'Critical': 45, 'High': 24, 'Medium': 12, 'Low': 5}
+    WEIGHTS    = {
+        'auth': 0.25, 'security': 0.25, 'pipeline': 0.20,
+        'error_handling': 0.15, 'dependencies': 0.08,
+        'complexity': 0.04, 'observability': 0.02, 'dead_code': 0.01,
+    }
+
+    category_scores = {}
+    for cat, issues in by_category.items():
+        deduction = 0
+        by_sev = {}
+        for issue in issues:
+            sev = issue.get('severity', 'Low')
+            by_sev[sev] = by_sev.get(sev, 0) + 1
+        for sev, count in by_sev.items():
+            raw = DEDUCTIONS.get(sev, 1) * count
+            deduction += min(raw, CAPS.get(sev, 5))
+        category_scores[cat] = max(0, 100 - deduction)
+
+    if not category_scores:
+        return {'code_level_score': 100, 'category_scores': {}}
+
+    total_weight = sum(WEIGHTS.get(cat, 0.02) for cat in category_scores)
+    weighted_sum = sum(category_scores[cat] * WEIGHTS.get(cat, 0.02) for cat in category_scores)
+    overall = round(max(0.0, min(100.0, weighted_sum / total_weight if total_weight else 100)), 1)
+
+    return {'code_level_score': overall, 'category_scores': category_scores}
+
+
 def analyze_repo(repo_path):
     """
     Run all static analysis passes on a single repo.

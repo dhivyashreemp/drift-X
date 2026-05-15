@@ -315,7 +315,7 @@ class ComplianceAgent:
             {{
                 "score": 78,
                 "deployment_verdict": "CONDITIONAL",
-                "summary": "3-5 sentence overall assessment covering the biggest risks, what is done well, and the top priority fixes needed before deployment.",
+                "summary": "- Bullet 1: biggest risk identified\n- Bullet 2: what the code does well\n- Bullet 3: top priority fix needed\n(Write 3-5 bullet points using '- ' prefix. Do NOT write paragraph sentences.)",
                 "issues": [
                     {{
                         "type": "Security Vulnerability",
@@ -549,7 +549,7 @@ class ComplianceAgent:
                 "module_purpose": "2-3 sentence description of what this module owns and is responsible for.",
                 "key_components": ["ClassName", "function_name", "route /path", "..."],
                 "compliance_score": 85,
-                "summary": "3-5 sentence assessment — what this module does well, its biggest gaps, and what must be fixed before deployment.",
+                "summary": "- Bullet 1: what this module does well\n- Bullet 2: biggest gap or risk\n- Bullet 3: top fix needed before deployment\n(Write 3-5 bullet points using '- ' prefix. Do NOT write paragraph sentences.)",
                 "issues": [
                     {{
                         "type": "Security Vulnerability",
@@ -743,7 +743,7 @@ class ComplianceAgent:
                 "dependency_issues": [],
                 "error_handling_issues": [],
                 "observability_issues": [],
-                "summary": "3-4 sentence summary of the most critical code-level structural findings and top priority fixes."
+                "summary": "- Bullet 1: most critical structural finding\n- Bullet 2: second most important finding\n- Bullet 3: top priority fix recommended\n(Write 3-5 bullet points using '- ' prefix. Do NOT write paragraph sentences.)"
             }}
             """,
             input_variables=["code_context"]
@@ -948,7 +948,7 @@ class ComplianceAgent:
                         "remediation": "1. Specific step one.\n2. Specific step two.\n3. Specific step three.\nBEFORE:\n```python\nmissing or broken code\n```\nAFTER:\n```python\nrestored or fixed code\n```"
                     }}
                 ],
-                "summary": "3-5 sentence overall evolution assessment — how many requirements were confirmed implemented, how many were lost, the most critical gaps, and the deployment risk level."
+                "summary": "- Bullet 1: X requirements confirmed implemented, Y lost or missing\n- Bullet 2: most critical gap or feature loss\n- Bullet 3: overall deployment risk level and recommendation\n(Write 3-5 bullet points using '- ' prefix. Do NOT write paragraph sentences.)"
             }}
             """,
             input_variables=["repo_summary", "total_commits", "requirements", "dos_donts",

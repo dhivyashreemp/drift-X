@@ -11,6 +11,11 @@ export default {
           700: '#163060',
           600: '#1d3f7a',
         },
+        neon: {
+          400: '#7fff14',
+          500: '#39FF14',
+          600: '#28cc0f',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

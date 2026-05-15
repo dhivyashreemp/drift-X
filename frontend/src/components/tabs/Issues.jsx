@@ -3,24 +3,24 @@ import { useState } from 'react'
 const SEVERITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 }
 
 const SEVERITY_STYLES = {
-  Critical: { badge: 'bg-red-100 text-red-700 border-red-300', border: 'border-red-300 bg-red-50', icon: '🔴' },
-  High:     { badge: 'bg-orange-100 text-orange-700 border-orange-300', border: 'border-orange-200 bg-orange-50', icon: '🟠' },
-  Medium:   { badge: 'bg-amber-100 text-amber-700 border-amber-200', border: 'border-amber-200 bg-amber-50', icon: '🟡' },
-  Low:      { badge: 'bg-slate-100 text-slate-600 border-slate-300', border: 'border-slate-200 bg-white', icon: '🔵' },
+  Critical: { badge: 'bg-red-900/60 text-red-400 border-red-700/60', border: 'border-red-700/50 bg-red-950/20', icon: '🔴' },
+  High:     { badge: 'bg-orange-900/60 text-orange-400 border-orange-700/60', border: 'border-orange-700/50 bg-orange-950/20', icon: '🟠' },
+  Medium:   { badge: 'bg-amber-900/60 text-amber-400 border-amber-700/60', border: 'border-amber-700/50 bg-amber-950/20', icon: '🟡' },
+  Low:      { badge: 'bg-zinc-700/60 text-zinc-400 border-zinc-600/60', border: 'border-zinc-700 bg-zinc-800/50', icon: '🔵' },
 }
 
 const TYPE_STYLES = {
-  'Security Vulnerability': 'bg-rose-100 text-rose-700 border-rose-300',
-  'Requirement Drift':      'bg-purple-100 text-purple-700 border-purple-200',
-  'Feature Completeness':   'bg-indigo-100 text-indigo-700 border-indigo-200',
-  'Code Quality':           'bg-slate-100 text-slate-700 border-slate-300',
-  'Error Handling':         'bg-red-100 text-red-700 border-red-200',
-  'Testing Gap':            'bg-yellow-100 text-yellow-700 border-yellow-200',
-  'Guideline Violation':    'bg-pink-100 text-pink-700 border-pink-200',
-  'Performance Issue':      'bg-cyan-100 text-cyan-700 border-cyan-200',
-  'Deployment Readiness':   'bg-teal-100 text-teal-700 border-teal-200',
-  'Observability Gap':      'bg-blue-100 text-blue-700 border-blue-200',
-  'Dependency Risk':        'bg-orange-100 text-orange-700 border-orange-200',
+  'Security Vulnerability': 'bg-rose-900/50 text-rose-400 border-rose-700/50',
+  'Requirement Drift':      'bg-purple-900/50 text-purple-400 border-purple-700/50',
+  'Feature Completeness':   'bg-indigo-900/50 text-indigo-400 border-indigo-700/50',
+  'Code Quality':           'bg-zinc-700/50 text-zinc-400 border-zinc-600/50',
+  'Error Handling':         'bg-red-900/50 text-red-400 border-red-700/50',
+  'Testing Gap':            'bg-yellow-900/50 text-yellow-400 border-yellow-700/50',
+  'Guideline Violation':    'bg-pink-900/50 text-pink-400 border-pink-700/50',
+  'Performance Issue':      'bg-cyan-900/50 text-cyan-400 border-cyan-700/50',
+  'Deployment Readiness':   'bg-teal-900/50 text-teal-400 border-teal-700/50',
+  'Observability Gap':      'bg-blue-900/50 text-blue-400 border-blue-700/50',
+  'Dependency Risk':        'bg-orange-900/50 text-orange-400 border-orange-700/50',
 }
 
 function inferSeverity(issue) {
@@ -39,7 +39,7 @@ function renderBlocks(text) {
     const codeMatch = part.match(/^```(\w*)\n([\s\S]*?)```$/)
     if (codeMatch) {
       return (
-        <pre key={i} className="bg-slate-900 text-slate-100 text-xs rounded p-3 overflow-x-auto my-2 leading-relaxed">
+        <pre key={i} className="bg-zinc-950 text-zinc-200 text-xs rounded p-3 overflow-x-auto my-2 leading-relaxed border border-zinc-800">
           <code>{codeMatch[2]}</code>
         </pre>
       )
@@ -61,7 +61,7 @@ function SeverityBadge({ severity }) {
 }
 
 function TypeBadge({ type }) {
-  const style = TYPE_STYLES[type] || 'bg-slate-100 text-slate-600 border-slate-300'
+  const style = TYPE_STYLES[type] || 'bg-zinc-700/50 text-zinc-400 border-zinc-600/50'
   return (
     <span className={`text-xs px-2 py-0.5 font-semibold border rounded-sm ${style}`}>
       {type || 'Issue'}
@@ -86,31 +86,31 @@ function IssueCard({ issue, index }) {
             <SeverityBadge severity={severity} />
             <TypeBadge type={issue.type} />
           </div>
-          <p className="text-sm text-slate-700 leading-snug line-clamp-2">
+          <p className="text-sm text-zinc-300 leading-snug line-clamp-2">
             {issue.description}
           </p>
         </div>
-        <span className="text-slate-400 shrink-0 text-xs mt-1">{open ? '▲' : '▼'}</span>
+        <span className="text-zinc-600 shrink-0 text-xs mt-1">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div className="border-t border-slate-200 divide-y divide-slate-100">
+        <div className="border-t border-zinc-700 divide-y divide-zinc-800">
           <Section label="What's wrong" icon="📋">
-            <p className="text-sm text-slate-700 leading-relaxed">{issue.description}</p>
+            <p className="text-sm text-zinc-300 leading-relaxed">{issue.description}</p>
           </Section>
 
           <Section label="Where in code" icon="📍">
-            <div className="text-sm text-slate-700 leading-relaxed">
+            <div className="text-sm text-zinc-300 leading-relaxed">
               {renderBlocks(issue.evidence)}
             </div>
           </Section>
 
           <Section label="Why it matters" icon="⚠️">
-            <p className="text-sm text-slate-600 leading-relaxed">{issue.reasoning}</p>
+            <p className="text-sm text-zinc-400 leading-relaxed">{issue.reasoning}</p>
           </Section>
 
-          <Section label="How to fix" icon="🔧" highlight>
-            <div className="text-sm text-blue-800 leading-relaxed">
+          <Section label="Recommended Fix" icon="🔧" highlight>
+            <div className="text-sm text-neon-400 leading-relaxed">
               {renderBlocks(issue.remediation)}
             </div>
           </Section>
@@ -122,8 +122,8 @@ function IssueCard({ issue, index }) {
 
 function Section({ label, icon, children, highlight }) {
   return (
-    <div className={`px-4 py-3 ${highlight ? 'bg-blue-50' : ''}`}>
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+    <div className={`px-4 py-3 ${highlight ? 'bg-neon-500/5' : ''}`}>
+      <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
         <span>{icon}</span> {label}
       </p>
       {children}
@@ -144,9 +144,9 @@ export default function Issues({ issues }) {
 
   if (!issues || issues.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-white border border-slate-200 rounded-sm">
+      <div className="flex flex-col items-center justify-center h-48 text-zinc-500 bg-zinc-800 border border-zinc-700 rounded-sm">
         <p className="text-3xl mb-2">✅</p>
-        <p className="font-medium">No issues found — code looks clean!</p>
+        <p className="font-medium text-zinc-300">No issues found — code looks clean!</p>
       </div>
     )
   }
@@ -166,22 +166,22 @@ export default function Issues({ issues }) {
       <div className="grid grid-cols-4 gap-2">
         {Object.entries(counts).map(([sev, n]) => (
           <div key={sev} className={`border rounded-sm p-2.5 text-center cursor-pointer transition-all ${
-            filter === sev ? 'ring-2 ring-orange-400' : ''
+            filter === sev ? 'ring-2 ring-neon-500/60' : ''
           } ${SEVERITY_STYLES[sev].border}`}
             onClick={() => setFilter(f => f === sev ? 'all' : sev)}
           >
-            <p className="text-lg font-bold text-slate-800">{n}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{sev}</p>
+            <p className="text-lg font-bold text-zinc-100">{n}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">{sev}</p>
           </div>
         ))}
       </div>
 
       {/* Filter bar */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-600">
-          Showing <span className="font-semibold">{displayed.length}</span> of{' '}
-          <span className="font-semibold">{issues.length}</span> issues
-          {filter !== 'all' && <span className="ml-1 text-slate-400">(filtered: {filter})</span>}
+        <p className="text-sm text-zinc-400">
+          Showing <span className="font-semibold text-zinc-200">{displayed.length}</span> of{' '}
+          <span className="font-semibold text-zinc-200">{issues.length}</span> issues
+          {filter !== 'all' && <span className="ml-1 text-zinc-500">(filtered: {filter})</span>}
         </p>
         <div className="flex gap-1">
           {FILTERS.map(f => (
@@ -190,8 +190,8 @@ export default function Issues({ issues }) {
               onClick={() => setFilter(f.key)}
               className={`text-xs px-3 py-1 font-semibold uppercase tracking-wide rounded-sm transition-all ${
                 filter === f.key
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'bg-white text-slate-500 border border-slate-300 hover:text-slate-800'
+                  ? 'bg-neon-500 text-zinc-900 shadow-sm'
+                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:text-zinc-200'
               }`}
             >
               {f.label}

@@ -6,10 +6,10 @@ function ScoreBar({ score }) {
   const color = s >= 80 ? 'bg-green-500' : s >= 60 ? 'bg-amber-500' : 'bg-red-500'
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 bg-slate-200 h-1.5 rounded-full">
+      <div className="flex-1 bg-zinc-700 h-1.5 rounded-full">
         <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${s}%` }} />
       </div>
-      <span className="text-xs text-slate-500 w-8 text-right tabular-nums">{s.toFixed(0)}</span>
+      <span className="text-xs text-zinc-500 w-8 text-right tabular-nums">{s.toFixed(0)}</span>
     </div>
   )
 }
@@ -40,7 +40,7 @@ function DownloadButton({ entry, repoUrl }) {
       onClick={handleDownload}
       disabled={loading}
       title="Download PDF report for this analysis"
-      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-300 bg-white text-slate-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-sm"
+      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-400 hover:bg-neon-500/10 hover:border-neon-500 hover:text-neon-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-sm"
     >
       {loading ? (
         <span className="animate-spin inline-block">⟳</span>
@@ -86,28 +86,28 @@ export default function History({ repoUrl, historyResults }) {
   const criticalIssues = historyResults?.critical_issues_found ?? 0
   const deploymentRisk = historyResults?.deployment_risk ?? null
 
-  const riskCls = { High: 'text-red-600', Medium: 'text-amber-600', Low: 'text-green-600' }
+  const riskCls = { High: 'text-red-400', Medium: 'text-amber-400', Low: 'text-green-400' }
 
   return (
     <div className="space-y-6">
       {/* Git metadata stats */}
       {historyResults && !historyResults.error && (
         <div>
-          <p className="text-sm font-semibold text-slate-700 mb-3">Git Metadata &amp; Risk</p>
+          <p className="text-sm font-semibold text-zinc-300 mb-3">Git Metadata &amp; Risk</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: 'Commits Analyzed', value: totalCommits },
               { label: 'Commits w/ Deletions', value: commitsWithDeletions },
               { label: 'Critical Issues', value: criticalIssues },
             ].map(s => (
-              <div key={s.label} className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm">
-                <p className="text-xs text-slate-500 font-medium">{s.label}</p>
-                <p className="text-xl font-bold text-slate-900 mt-1">{s.value}</p>
+              <div key={s.label} className="bg-zinc-800 border border-zinc-700 p-4 rounded-sm shadow-sm">
+                <p className="text-xs text-zinc-500 font-medium">{s.label}</p>
+                <p className="text-xl font-bold text-zinc-100 mt-1">{s.value}</p>
               </div>
             ))}
-            <div className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm">
-              <p className="text-xs text-slate-500 font-medium mb-1">Deployment Risk</p>
-              <p className={`font-semibold text-sm ${riskCls[deploymentRisk] || 'text-slate-400'}`}>
+            <div className="bg-zinc-800 border border-zinc-700 p-4 rounded-sm shadow-sm">
+              <p className="text-xs text-zinc-500 font-medium mb-1">Deployment Risk</p>
+              <p className={`font-semibold text-sm ${riskCls[deploymentRisk] || 'text-zinc-500'}`}>
                 {deploymentRisk || 'Unknown'}
               </p>
             </div>
@@ -118,12 +118,12 @@ export default function History({ repoUrl, historyResults }) {
       {/* Past analyses */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-slate-700">Past Analyses</p>
+          <p className="text-sm font-semibold text-zinc-300">Past Analyses</p>
           {history.length > 0 && (
             <button
               onClick={clearHistory}
               disabled={clearing}
-              className="text-xs text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40"
+              className="text-xs text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-40"
             >
               {clearing ? 'Clearing...' : 'Clear History'}
             </button>
@@ -131,11 +131,11 @@ export default function History({ repoUrl, historyResults }) {
         </div>
 
         {loading && (
-          <p className="text-sm text-slate-400 text-center py-8">Loading history...</p>
+          <p className="text-sm text-zinc-500 text-center py-8">Loading history...</p>
         )}
 
         {!loading && history.length === 0 && (
-          <div className="text-center py-8 text-slate-400 border border-dashed border-slate-300 bg-white rounded-sm">
+          <div className="text-center py-8 text-zinc-500 border border-dashed border-zinc-700 bg-zinc-800/50 rounded-sm">
             No past analyses for this repository.
           </div>
         )}
@@ -143,19 +143,19 @@ export default function History({ repoUrl, historyResults }) {
         {!loading && history.length > 0 && (
           <div className="space-y-2">
             {history.map((entry, i) => (
-              <div key={i} className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm hover:border-slate-300 transition-colors">
+              <div key={i} className="bg-zinc-800 border border-zinc-700 p-4 rounded-sm shadow-sm hover:border-zinc-600 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="text-xs text-slate-400 tabular-nums">{entry.timestamp}</span>
-                      <span className="text-xs bg-slate-100 border border-slate-200 text-slate-500 px-2 py-0.5 rounded-sm">{entry.type}</span>
+                      <span className="text-xs text-zinc-500 tabular-nums">{entry.timestamp}</span>
+                      <span className="text-xs bg-zinc-700/60 border border-zinc-700 text-zinc-400 px-2 py-0.5 rounded-sm">{entry.type}</span>
                       {i === 0 && (
-                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-sm border border-orange-300 font-semibold">
+                        <span className="text-xs bg-neon-500/10 text-neon-500 px-2 py-0.5 rounded-sm border border-neon-500/30 font-semibold">
                           Latest
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-600 leading-relaxed">{entry.summary}</p>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{entry.summary}</p>
                     <div className="mt-2 max-w-52">
                       <ScoreBar score={entry.score} />
                     </div>

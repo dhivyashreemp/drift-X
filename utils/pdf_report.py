@@ -299,7 +299,7 @@ def _issue_card(idx, issue, styles):
         ])
     if remed:
         rows.append([
-            Paragraph("How to fix", styles["label"]),
+            Paragraph("Recommended Fix", styles["label"]),
             Paragraph(remed, styles["remediation"]),
             Paragraph("", styles["body"]),
         ])

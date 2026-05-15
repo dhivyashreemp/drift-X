@@ -25,7 +25,7 @@ load_dotenv(os.path.join(_ROOT_DIR, ".env"))
 from mcp_server.tools.git_reader import clone_repo, cleanup_repo
 from mcp_server.tools.commit_analyzer import CommitAnalyzer
 from agents.compliance_agent import ComplianceAgent
-from utils.static_analyzer import analyze_repos
+from utils.static_analyzer import analyze_repos, calculate_scores
 from history_manager import save_analysis, get_repo_history, clear_repo_history, get_analysis_full
 from db import jobs_col
 from utils.pdf_report import generate_pdf_report
@@ -364,8 +364,11 @@ def _run_job(
         _job_update(job_id, {"progress": "Running LLM code structure analysis…"})
         llm_code_results = agent.analyze_code_structure(repo_paths_labeled)
 
+        scores = calculate_scores(static_results.get("by_category", {}))
         code_level_results = {
             "total_static_issues": static_results.get("total_issues", 0),
+            "code_level_score": scores["code_level_score"],
+            "category_scores": scores["category_scores"],
             "by_category": static_results.get("by_category", {}),
             "by_file": static_results.get("by_file", {}),
             "llm_auth_issues": llm_code_results.get("auth_issues", []),

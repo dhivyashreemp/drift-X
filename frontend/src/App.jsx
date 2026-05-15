@@ -182,50 +182,50 @@ function AnalysisView() {
         analysisRunning={analysisStatus === 'running'}
       />
 
-      <main className="flex-1 overflow-y-auto bg-slate-50">
+      <main className="flex-1 overflow-y-auto bg-zinc-950">
         <div className="p-6 max-w-6xl mx-auto">
           {analysisStatus === 'idle' && !analysisResult && (
-            <div className="flex flex-col items-center justify-center h-80 text-slate-400 border border-dashed border-slate-300 bg-white rounded-sm shadow-sm">
-              <div className="w-20 h-20 bg-orange-50 border border-orange-200 flex items-center justify-center mb-5 rounded">
+            <div className="flex flex-col items-center justify-center h-80 text-zinc-600 border border-dashed border-zinc-800 bg-zinc-900 rounded-sm shadow-sm">
+              <div className="w-20 h-20 bg-neon-500/10 border border-neon-500/30 flex items-center justify-center mb-5 rounded">
                 <span className="text-4xl">🛡️</span>
               </div>
-              <p className="text-lg text-slate-700 font-semibold">Ready to analyse</p>
-              <p className="text-sm text-slate-400 mt-1.5 max-w-sm text-center">
-                Configure one or more repositories and upload requirement documents, then click <strong>Start Analysis</strong>.
+              <p className="text-lg text-zinc-200 font-semibold">Ready to analyse</p>
+              <p className="text-sm text-zinc-500 mt-1.5 max-w-sm text-center">
+                Configure one or more repositories and upload requirement documents, then click <strong className="text-neon-500">Start Analysis</strong>.
               </p>
             </div>
           )}
 
           {analysisStatus === 'running' && (
-            <div className="flex flex-col items-center justify-center h-80 bg-white border border-slate-200 rounded-sm shadow-sm">
+            <div className="flex flex-col items-center justify-center h-80 bg-zinc-900 border border-zinc-800 rounded-sm shadow-sm">
               <div className="relative mb-6">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500" />
-                <div className="absolute inset-0 rounded-full h-16 w-16 border-2 border-slate-100" />
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-neon-500" />
+                <div className="absolute inset-0 rounded-full h-16 w-16 border-2 border-zinc-800" />
               </div>
-              <p className="text-orange-600 text-base font-bold">{progressMessage}</p>
-              <p className="text-slate-400 text-sm mt-2">
+              <p className="text-neon-500 text-base font-bold">{progressMessage}</p>
+              <p className="text-zinc-500 text-sm mt-2">
                 Analysing {repoCount} repo{repoCount !== 1 ? 's' : ''} — this typically takes 2–5 minutes
               </p>
             </div>
           )}
 
           {analysisStatus === 'error' && (
-            <div className={`border p-6 rounded-sm shadow-sm ${isPrivateRepoError ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
+            <div className={`border p-6 rounded-sm shadow-sm ${isPrivateRepoError ? 'bg-amber-950/30 border-amber-700/50' : 'bg-red-950/30 border-red-700/50'}`}>
               {isPrivateRepoError ? (
                 <>
-                  <p className="text-amber-800 font-bold text-base">Private Repository Access Denied</p>
-                  <p className="text-amber-700 text-sm mt-2">{progressMessage}</p>
-                  <p className="text-amber-600 text-xs mt-3">Add a GitHub token to the relevant repository card in the sidebar and retry.</p>
+                  <p className="text-amber-400 font-bold text-base">Private Repository Access Denied</p>
+                  <p className="text-amber-300 text-sm mt-2">{progressMessage}</p>
+                  <p className="text-amber-500 text-xs mt-3">Add a GitHub token to the relevant repository card in the sidebar and retry.</p>
                 </>
               ) : (
                 <>
-                  <p className="text-red-800 font-bold text-base">Analysis Failed</p>
-                  <p className="text-red-700 text-sm mt-2">{progressMessage}</p>
+                  <p className="text-red-400 font-bold text-base">Analysis Failed</p>
+                  <p className="text-red-300 text-sm mt-2">{progressMessage}</p>
                 </>
               )}
               <button
                 onClick={() => { setAnalysisStatus('idle'); setIsPrivateRepoError(false) }}
-                className="mt-4 text-sm text-slate-600 hover:text-slate-900 underline block font-medium"
+                className="mt-4 text-sm text-zinc-400 hover:text-zinc-100 underline block font-medium"
               >
                 Dismiss
               </button>
@@ -258,8 +258,8 @@ function AppShell() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-orange-500" />
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-neon-500" />
       </div>
     )
   }
@@ -272,10 +272,9 @@ function AppShell() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900">
+    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100">
       <NavBar view={view} onSetView={handleSetView} />
       <div className="flex-1 overflow-hidden flex flex-col">
-        {/* All views are always mounted — only visibility toggled — preserves state across tabs */}
         {isManager && (
           <div className={`flex-1 overflow-y-auto ${view === 'team' ? '' : 'hidden'}`}>
             <TeamDashboard />

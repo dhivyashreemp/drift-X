@@ -1,10 +1,10 @@
 import { useState } from 'react'
 
 const SEVERITY_STYLES = {
-  Critical: { badge: 'bg-red-100 text-red-700 border-red-300', border: 'border-red-300 bg-red-50', icon: '🔴' },
-  High:     { badge: 'bg-orange-100 text-orange-700 border-orange-300', border: 'border-orange-200 bg-orange-50', icon: '🟠' },
-  Medium:   { badge: 'bg-amber-100 text-amber-700 border-amber-200', border: 'border-amber-200 bg-amber-50', icon: '🟡' },
-  Low:      { badge: 'bg-slate-100 text-slate-600 border-slate-300', border: 'border-slate-200 bg-white', icon: '🔵' },
+  Critical: { badge: 'bg-red-900/60 text-red-400 border-red-700/60', border: 'border-red-700/50 bg-red-950/20', icon: '🔴' },
+  High:     { badge: 'bg-orange-900/60 text-orange-400 border-orange-700/60', border: 'border-orange-700/50 bg-orange-950/20', icon: '🟠' },
+  Medium:   { badge: 'bg-amber-900/60 text-amber-400 border-amber-700/60', border: 'border-amber-700/50 bg-amber-950/20', icon: '🟡' },
+  Low:      { badge: 'bg-zinc-700/60 text-zinc-400 border-zinc-600/60', border: 'border-zinc-700 bg-zinc-800/50', icon: '🔵' },
 }
 
 function inferSeverity(issue) {
@@ -23,7 +23,7 @@ function renderBlocks(text) {
     const codeMatch = part.match(/^```(\w*)\n([\s\S]*?)```$/)
     if (codeMatch) {
       return (
-        <pre key={i} className="bg-slate-900 text-slate-100 text-xs rounded p-3 overflow-x-auto my-2 leading-relaxed">
+        <pre key={i} className="bg-zinc-950 text-zinc-200 text-xs rounded p-3 overflow-x-auto my-2 leading-relaxed border border-zinc-800">
           <code>{codeMatch[2]}</code>
         </pre>
       )
@@ -31,6 +31,28 @@ function renderBlocks(text) {
     if (!part.trim()) return null
     return <span key={i} className="whitespace-pre-wrap">{part}</span>
   })
+}
+
+function renderBullets(text) {
+  if (!text) return null
+  const trimmed = text.trim()
+  if (!trimmed.includes('\n- ') && !trimmed.startsWith('- ')) {
+    return <p className="text-sm text-zinc-400 leading-relaxed">{trimmed}</p>
+  }
+  const lines = trimmed.split('\n').filter(l => l.trim())
+  return (
+    <ul className="space-y-1.5">
+      {lines.map((line, i) => {
+        const clean = line.startsWith('- ') ? line.slice(2) : line
+        return (
+          <li key={i} className="flex items-start gap-2 text-sm text-zinc-400 leading-relaxed">
+            <span className="text-neon-500 shrink-0 font-bold mt-0.5">•</span>
+            <span>{clean}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
 }
 
 function IssueCard({ issue }) {
@@ -46,27 +68,27 @@ function IssueCard({ issue }) {
           <div className="flex flex-wrap gap-2 mb-1">
             <span className={`text-xs px-2 py-0.5 font-bold border rounded-sm ${styles.badge}`}>{severity}</span>
             {issue.type && (
-              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-300 rounded-sm font-semibold">{issue.type}</span>
+              <span className="text-xs px-2 py-0.5 bg-zinc-700/60 text-zinc-400 border border-zinc-600/60 rounded-sm font-semibold">{issue.type}</span>
             )}
           </div>
-          <p className="text-sm text-slate-700 line-clamp-2">{issue.description}</p>
+          <p className="text-sm text-zinc-300 line-clamp-2">{issue.description}</p>
         </div>
-        <span className="text-slate-400 shrink-0 text-xs mt-1">{open ? '▲' : '▼'}</span>
+        <span className="text-zinc-600 shrink-0 text-xs mt-1">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div className="border-t border-slate-200 divide-y divide-slate-100">
+        <div className="border-t border-zinc-700 divide-y divide-zinc-800">
           <SectionBlock label="What's wrong" icon="📋">
-            <p className="text-sm text-slate-700 leading-relaxed">{issue.description}</p>
+            <p className="text-sm text-zinc-300 leading-relaxed">{issue.description}</p>
           </SectionBlock>
           <SectionBlock label="Where in code" icon="📍">
-            <div className="text-sm text-slate-700">{renderBlocks(issue.evidence)}</div>
+            <div className="text-sm text-zinc-300">{renderBlocks(issue.evidence)}</div>
           </SectionBlock>
           <SectionBlock label="Why it matters" icon="⚠️">
-            <p className="text-sm text-slate-600 leading-relaxed">{issue.reasoning}</p>
+            <p className="text-sm text-zinc-400 leading-relaxed">{issue.reasoning}</p>
           </SectionBlock>
-          <SectionBlock label="How to fix" icon="🔧" highlight>
-            <div className="text-sm text-blue-800 leading-relaxed">{renderBlocks(issue.remediation)}</div>
+          <SectionBlock label="Recommended Fix" icon="🔧" highlight>
+            <div className="text-sm text-neon-400 leading-relaxed">{renderBlocks(issue.remediation)}</div>
           </SectionBlock>
         </div>
       )}
@@ -76,8 +98,8 @@ function IssueCard({ issue }) {
 
 function SectionBlock({ label, icon, children, highlight }) {
   return (
-    <div className={`px-4 py-3 ${highlight ? 'bg-blue-50' : ''}`}>
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+    <div className={`px-4 py-3 ${highlight ? 'bg-neon-500/5' : ''}`}>
+      <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
         <span>{icon}</span> {label}
       </p>
       {children}
@@ -87,9 +109,9 @@ function SectionBlock({ label, icon, children, highlight }) {
 
 function MetricCard({ label, value, scoreColor }) {
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-sm p-4 text-center">
-      <p className={`text-2xl font-bold ${scoreColor || 'text-slate-800'}`}>{value}</p>
-      <p className="text-xs text-slate-500 mt-1">{label}</p>
+    <div className="bg-zinc-800 border border-zinc-700 rounded-sm p-4 text-center">
+      <p className={`text-2xl font-bold ${scoreColor || 'text-zinc-100'}`}>{value}</p>
+      <p className="text-xs text-zinc-500 mt-1">{label}</p>
     </div>
   )
 }
@@ -102,19 +124,19 @@ export default function ModuleAnalysis({ moduleResults }) {
 
   const analysis = moduleResults.analysis ?? {}
   const modScore = analysis.compliance_score
-  const scoreColor = modScore >= 85 ? 'text-green-600' : modScore >= 65 ? 'text-amber-600' : 'text-red-600'
+  const scoreColor = modScore >= 85 ? 'text-green-400' : modScore >= 65 ? 'text-amber-400' : 'text-red-400'
 
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
+      <div className="bg-zinc-800 border border-zinc-700 rounded-sm p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <span className="text-2xl">🧩</span>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Module Analysis</p>
-            <h2 className="text-lg font-bold text-slate-800 mt-0.5">{moduleResults.module_name}</h2>
+            <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Module Analysis</p>
+            <h2 className="text-lg font-bold text-zinc-100 mt-0.5">{moduleResults.module_name}</h2>
             {analysis.module_purpose && (
-              <p className="text-sm text-slate-500 mt-1 leading-relaxed">{analysis.module_purpose}</p>
+              <p className="text-sm text-zinc-400 mt-1 leading-relaxed">{analysis.module_purpose}</p>
             )}
           </div>
         </div>
@@ -129,19 +151,19 @@ export default function ModuleAnalysis({ moduleResults }) {
 
       {/* Summary */}
       {analysis.summary && (
-        <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</p>
-          <p className="text-sm text-slate-600 leading-relaxed">{analysis.summary}</p>
+        <div className="bg-zinc-800 border border-zinc-700 rounded-sm p-4 shadow-sm">
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Summary</p>
+          {renderBullets(analysis.summary)}
         </div>
       )}
 
       {/* Key Components */}
       {analysis.key_components?.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Key Components</p>
+        <div className="bg-zinc-800 border border-zinc-700 rounded-sm p-4 shadow-sm">
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Key Components</p>
           <div className="flex flex-wrap gap-2">
             {analysis.key_components.map((c, i) => (
-              <span key={i} className="text-xs bg-orange-50 border border-orange-200 text-orange-700 px-2 py-1 rounded-sm font-mono">
+              <span key={i} className="text-xs bg-neon-500/10 border border-neon-500/30 text-neon-500 px-2 py-1 rounded-sm font-mono">
                 {c}
               </span>
             ))}
@@ -151,20 +173,20 @@ export default function ModuleAnalysis({ moduleResults }) {
 
       {/* Module Files */}
       {moduleResults.related_files?.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-sm shadow-sm">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-sm shadow-sm">
           <button
-            className="w-full text-left px-4 py-3 flex items-center justify-between"
+            className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-zinc-700/30 transition-colors"
             onClick={() => setFilesOpen(o => !o)}
           >
-            <span className="text-sm font-semibold text-slate-700">
-              📂 Module Files <span className="text-slate-400 font-normal">({moduleResults.related_files.length})</span>
+            <span className="text-sm font-semibold text-zinc-300">
+              📂 Module Files <span className="text-zinc-500 font-normal">({moduleResults.related_files.length})</span>
             </span>
-            <span className="text-slate-400 text-xs">{filesOpen ? '▲' : '▼'}</span>
+            <span className="text-zinc-500 text-xs">{filesOpen ? '▲' : '▼'}</span>
           </button>
           {filesOpen && (
-            <div className="px-4 pb-4 space-y-1 border-t border-slate-100">
+            <div className="px-4 pb-4 space-y-1 border-t border-zinc-700">
               {moduleResults.related_files.map((f, i) => (
-                <code key={i} className="block text-xs text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 mt-1 rounded-sm font-mono">
+                <code key={i} className="block text-xs text-zinc-400 bg-zinc-900/50 border border-zinc-700 px-2 py-1 mt-1 rounded-sm font-mono">
                   {f}
                 </code>
               ))}
@@ -175,23 +197,23 @@ export default function ModuleAnalysis({ moduleResults }) {
 
       {/* Cross-references */}
       {Object.keys(moduleResults.usage_in_files ?? {}).length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-sm shadow-sm">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-sm shadow-sm">
           <button
-            className="w-full text-left px-4 py-3 flex items-center justify-between"
+            className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-zinc-700/30 transition-colors"
             onClick={() => setUsagesOpen(o => !o)}
           >
-            <span className="text-sm font-semibold text-slate-700">
-              🔗 Cross-References <span className="text-slate-400 font-normal">({Object.keys(moduleResults.usage_in_files).length} file(s))</span>
+            <span className="text-sm font-semibold text-zinc-300">
+              🔗 Cross-References <span className="text-zinc-500 font-normal">({Object.keys(moduleResults.usage_in_files).length} file(s))</span>
             </span>
-            <span className="text-slate-400 text-xs">{usagesOpen ? '▲' : '▼'}</span>
+            <span className="text-zinc-500 text-xs">{usagesOpen ? '▲' : '▼'}</span>
           </button>
           {usagesOpen && (
-            <div className="px-4 pb-4 space-y-3 border-t border-slate-100">
+            <div className="px-4 pb-4 space-y-3 border-t border-zinc-700">
               {Object.entries(moduleResults.usage_in_files).map(([path, hits]) => (
                 <div key={path} className="mt-3">
-                  <code className="text-xs text-orange-600 font-mono font-semibold">{path}</code>
+                  <code className="text-xs text-neon-500 font-mono font-semibold">{path}</code>
                   {hits.map((h, i) => (
-                    <code key={i} className="block text-xs text-slate-500 mt-1 bg-slate-50 border border-slate-200 px-2 py-1 rounded-sm font-mono">
+                    <code key={i} className="block text-xs text-zinc-500 mt-1 bg-zinc-900/50 border border-zinc-700 px-2 py-1 rounded-sm font-mono">
                       L{h.line}: {h.content}
                     </code>
                   ))}
@@ -205,7 +227,7 @@ export default function ModuleAnalysis({ moduleResults }) {
       {/* Issues */}
       {analysis.issues?.length > 0 ? (
         <div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Module Issues ({analysis.issues.length})</p>
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Module Issues ({analysis.issues.length})</p>
           <div className="space-y-2">
             {[...analysis.issues]
               .sort((a, b) => {
@@ -218,9 +240,9 @@ export default function ModuleAnalysis({ moduleResults }) {
           </div>
         </div>
       ) : analysis.summary ? (
-        <div className="bg-green-50 border border-green-200 rounded-sm p-4 flex items-start gap-2">
+        <div className="bg-green-950/30 border border-green-700/50 rounded-sm p-4 flex items-start gap-2">
           <span className="text-lg">✅</span>
-          <p className="text-sm text-green-700 leading-relaxed">{analysis.summary}</p>
+          <p className="text-sm text-green-400 leading-relaxed">{analysis.summary}</p>
         </div>
       ) : null}
     </div>
